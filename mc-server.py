@@ -19,8 +19,11 @@ def session_didReceiveData_fromPeer_(_self,_cmd,_session,_data,_peerID):
 def session_didReceiveStream_withName_fromPeer_(_self,_cmd,_session,_stream,_streamName,_peerID):
   print('Received Stream....',_streamName)
 
-SessionDelegate = create_objc_class('SessionDelegate',methods=[session_peer_didChangeState_, session_didReceiveData_fromPeer_, session_didReceiveStream_withName_fromPeer_],protocols=['MCSessionDelegate'])
-SDelegate = SessionDelegate.alloc().init()
+try:
+  SDelegate = SessionDelegate.alloc().init()
+except:
+  SessionDelegate = create_objc_class('SessionDelegate',methods=[session_peer_didChangeState_, session_didReceiveData_fromPeer_, session_didReceiveStream_withName_fromPeer_],protocols=['MCSessionDelegate'])
+  SDelegate = SessionDelegate.alloc().init()
 
 class _block_descriptor (Structure):
    _fields_ = [('reserved', c_ulong), ('size', c_ulong), ('copy_helper', c_void_p), ('dispose_helper', c_void_p), ('signature', c_char_p)]
@@ -30,19 +33,20 @@ class block_literal(Structure):
 
 # Advertiser Delegate
 def advertiser_didReceiveInvitationFromPeer_withContext_invitationHandler_(_self,_cmd,advertiser,peerID,context,invitationHandler):
+  print('invitation',peerID)
   blk=block_literal.from_address(invitationHandler)
   blk.invoke(ObjCInstance(invitationHandler),True, ObjCInstance(mySession))
   
-f= advertiser_didReceiveInvitationFromPeer_withContext_invitationHandler_
-f.argtypes  =[c_void_p]*4
-f.restype = None
-f.encoding=b'v@:@@@@?'
-# also, try f.encoding=b'v@:@@@@'
-AdvertiserDelegate = create_objc_class('AdvertiserDelegate',methods=[advertiser_didReceiveInvitationFromPeer_withContext_invitationHandler_])
-#ObjCInstance(invitationHandler).invoke(True,mySession)
-
-#AdvertiserDelegate = create_objc_class('AdvertiserDelegate',methods=[advertiser_didReceiveInvitationFromPeer_withContext_invitationHandler_],protocols=['MCNearbyServiceAdvertiserDelegate'])
-ADelegate = AdvertiserDelegate.alloc().init()
+try:
+  ADelegate = AdvertiserDelegate.alloc().init()
+except:
+  f= advertiser_didReceiveInvitationFromPeer_withContext_invitationHandler_
+  f.argtypes  =[c_void_p]*4
+  f.restype = None
+  f.encoding=b'v@:@@@@?'
+  # also, try f.encoding=b'v@:@@@@'
+  AdvertiserDelegate = create_objc_class('AdvertiserDelegate',methods=[advertiser_didReceiveInvitationFromPeer_withContext_invitationHandler_])
+  ADelegate = AdvertiserDelegate.alloc().init()
 
 
 # init PeerID
@@ -69,6 +73,7 @@ try:
 except KeyboardInterrupt:
   print('Server Stop...')
   aSrv.stopAdvertisingPeer()
+  mySession.disconnect()
 except:
   raise
 
