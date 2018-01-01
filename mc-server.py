@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 from objc_util import *
-import ctypes,time,os
+import ctypes,time,os,types,functools
 
 NSBundle.bundle(Path="/System/Library/Frameworks/MultipeerConnectivity.framework").load()
 MCPeerID=ObjCClass('MCPeerID')
@@ -11,7 +11,10 @@ MCNearbyServiceBrowser=ObjCClass('MCNearbyServiceBrowser')
 
 # Session Delegate
 def session_peer_didChangeState_(_self,_cmd,_session,_peerID,_state):
+  global mySession
   print('session change',_peerID,_session,_state)
+  #if _state == 2:
+    #mySession.sendData_toPeers_withMode_error_(b'Hello there', ['wolf_client'], 0, None)
 
 def session_didReceiveData_fromPeer_(_self,_cmd,_session,_data,_peerID):
   print('Received Data',_data)
@@ -25,6 +28,7 @@ except:
   SessionDelegate = create_objc_class('SessionDelegate',methods=[session_peer_didChangeState_, session_didReceiveData_fromPeer_, session_didReceiveStream_withName_fromPeer_],protocols=['MCSessionDelegate'])
   SDelegate = SessionDelegate.alloc().init()
 
+
 class _block_descriptor (Structure):
    _fields_ = [('reserved', c_ulong), ('size', c_ulong), ('copy_helper', c_void_p), ('dispose_helper', c_void_p), ('signature', c_char_p)]
 InvokeFuncType = ctypes.CFUNCTYPE(None, *[c_void_p,ctypes.c_bool,c_void_p])
@@ -33,9 +37,14 @@ class block_literal(Structure):
 
 # Advertiser Delegate
 def advertiser_didReceiveInvitationFromPeer_withContext_invitationHandler_(_self,_cmd,advertiser,peerID,context,invitationHandler):
-  print('invitation',peerID)
+  global mySession, aSrv
+  invitation_handler = ObjCInstance(invitationHandler)
+  retain_global(invitation_handler)
   blk=block_literal.from_address(invitationHandler)
-  blk.invoke(ObjCInstance(invitationHandler),True, ObjCInstance(mySession))
+  blk.invoke(invitation_handler,True, mySession)
+  
+  #handler = ObjCBlock(ObjCInstance(invitationHandler), restype=None, argtypes=[c_void_p, ctypes.c_bool, c_void_p])
+  #handler(True, ObjCInstance(mySession))
   
 try:
   ADelegate = AdvertiserDelegate.alloc().init()
@@ -48,13 +57,11 @@ except:
   AdvertiserDelegate = create_objc_class('AdvertiserDelegate',methods=[advertiser_didReceiveInvitationFromPeer_withContext_invitationHandler_])
   ADelegate = AdvertiserDelegate.alloc().init()
 
-
 # init PeerID
 myID = MCPeerID.alloc().initWithDisplayName('wolf_srv')
 # init Session and delegate
 mySession = MCSession.alloc().initWithPeer_(myID)
 mySession.setDelegate_(SDelegate)
-
 
 '''
     Server
@@ -69,11 +76,13 @@ print('Server start, ID is : ',myID)
 
 try:
   while 1:
-    time.sleep(0.1)
+    time.sleep(0.5)
 except KeyboardInterrupt:
   print('Server Stop...')
   aSrv.stopAdvertisingPeer()
   mySession.disconnect()
+  aSrv.setDelegate_(None)
+  mySession.setDelegate_(None)
 except:
   raise
 
