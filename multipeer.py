@@ -232,10 +232,10 @@ class MultipeerConnectivity():
   def end_all(self):
     self.stop_looking_for_peers()
     self.disconnect()
-    self.session.cancelConnectPeer_(self.my_id)
-    self.advertiser.setDelegate_(None)
-    self.browser.setDelegate_(None)
-    self.session.setDelegate_(None)
+    #self.session.cancelConnectPeer_(self.my_id)
+    #self.advertiser.setDelegate_(None)
+    #self.browser.setDelegate_(None)
+    #self.session.setDelegate_(None)
     del mc_managers[self.my_id.hash()]
 
 if __name__ == '__main__':
@@ -264,6 +264,9 @@ if __name__ == '__main__':
       super().__init__(**kwargs)
       self.message_count = 0
     
+    def trigger_start_chat(self, sender):
+      name_field.end_editing()
+    
     def start_chat(self, sender):
       chat_name = name_field.text
       if len(chat_name) > 0:
@@ -275,7 +278,6 @@ if __name__ == '__main__':
         peers.text = 'Looking for peers'
         
         self.mc = ChatPeer(service_type='chat-demo', display_name=chat_name)
-        print('Mine', self.mc.my_id)
         
     def send_message(self, sender):
       self.message_count += 1
@@ -297,7 +299,8 @@ if __name__ == '__main__':
   
   name_field = ui.TextField(placeholder='Your display name', frame=(20,20,w-80, 40), flex='W')
   go_button = ui.Button(title='Go', frame=(0.9*w,20,80,80), flex='W', background_color='grey', tint_color='white')
-  name_field.action = go_button.action = chat.start_chat
+  name_field.action = chat.start_chat
+  go_button.action = chat.trigger_start_chat
   
   peers = ui.TextView(text='Enter your name first', editable=False, frame=(20, 80, w-40, 80), flex='WH')
   
