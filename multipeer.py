@@ -232,6 +232,7 @@ class MultipeerConnectivity():
   def end_all(self):
     self.stop_looking_for_peers()
     self.disconnect()
+    self.session.cancelConnectPeer_(self.my_id)
     self.advertiser.setDelegate_(None)
     self.browser.setDelegate_(None)
     self.session.setDelegate_(None)
