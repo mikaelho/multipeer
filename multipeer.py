@@ -5,7 +5,7 @@
 
 This is a [Pythonista](http://omz-software.com/pythonista/) wrapper around iOS [Multipeer Connectivity](https://developer.apple.com/documentation/multipeerconnectivity?language=objc).
 
-Multipeer connectivity allows you to find and exchange information with devices in the same network neighborhood (same wifi or bluetooth), without going through some server.
+Multipeer connectivity allows you to find and exchange information between 2-8 devices in the same network neighborhood (same wifi or bluetooth), without going through some server.
 
 Here's a minimal usage example, a line-based chat:
 
@@ -22,26 +22,62 @@ Here's a minimal usage example, a line-based chat:
     finally:
       mc.end_all()
 
-It is functional, even though the prompts and incoming messages tend to get messily mixed up. You can also run the `multipeer.py` file to try out a cleaner Pythonista UI version of the chat.
+It is functional, even though the prompts and incoming messages tend to get mixed up. You can also run the `multipeer.py` file to try out a cleaner Pythonista UI version of the chat.
 
 Here are the things to note when starting to use this library:
-peertopeer
-message
-expected flow
-subclass
-peer ID
+  
+## Peer-to-peer, not client-server
 
-# Details
-Autoinvite
-Defaults: Secure, reliable, transient
-Some memory leaking
-Discovery info ignored
-No way to kick anyone out
+This wrapper around the MC framework makes no assumptions regarding the relationships between peers. If you need client-server roles, you can build them on top.
+
+## Expected usage
+
+1. Create a subclass of `MultipeerCommunications` to handle messages from the framework (see separate topic, below).
+2. Instantiate the subclass with your service type and peer display name (see the class description).
+3. Wait for peers to connect (see the `peer_added` and `get_peers` methods).
+4. Optionally, have each participating peer stop accepting further peers, e.g. for the duration of a game (see the `stop_looking_for_peers` method).
+5. Send and receive messages (see a separate topic, below).
+6. Potentially react to additions and removal of peers.
+7. Optionally, start accepting peers again, e.g. after a previous game ends (see the `start_looking_for_peers` method).
+8. Before your app exits, call the `end_all` method to make sure there are no lingering connections.
+
+## What's in a message?
+
+Messages passed between peers are UTF-8 encoded text. This wrapper JSON-serializes the message you give to the `send` method (probably a str or a dict), then encodes it in bytes. Receiving peers reconstitute the message and pass it to the `receive` callback.
+
+## What is a peer ID?
+
+Peer IDs passed around by the wrapper have a `display_name` member that gives you the display name of that peer. There is no guarantee that these names are unique between peers.
+
+The IDs act also as identifier objects for specific peers, and can be used to `send` messages to individual peers.
+
+You cannot create peer IDs for remote peers manually.
+
+## Why do I need to subclass?
+
+This wrapper chooses to handle callbacks via subclassing rather than requiring a separate delegate class. Subclass should define the following methods; see the API for the method signatures:
+  
+* `peer_added`
+* `peer_removed`
+* `receive`
+
+The versions of these methods in the `MultipeerConnectivity` class just print out the information received.
+
+## Additional details
+
+* This implementation uses automatic invite of all peers (until you call `stop_looking_for_peers`). Future version may include a callback for making decisions on which peers to accept.
+* Related to the previous point, including discovery info while browsing for peers is not currently supported.
+* Also, there is no way to explicitly kick a specific peer out of a session. This seems to be a limitation of the Apple framework.
+* Following defaults are used and are not currently configurable without resorting to ObjC:
+  * Secure - Encryption is required on all connections.
+  * Not secure - A specific security identity cannot be set.
+  * Reliable - When sending data to other peers, framework tries to guarantee delivery of each message, enqueueing and retransmitting data as needed, and ensuring in-order delivery.
 '''
 
 from objc_util import *
 import ctypes, re, json
 
+# MC framework classes
 NSBundle.bundle(Path="/System/Library/Frameworks/MultipeerConnectivity.framework").load()
 MCPeerID=ObjCClass('MCPeerID')
 MCSession=ObjCClass('MCSession')
@@ -57,6 +93,8 @@ def _get_self(manager_object):
   ''' Expects a 'manager object', i.e. one of session, advertiser or browser, and uses the contained peer ID to locate the right Python manager object. '''
   global mc_managers
   return mc_managers.get(ObjCInstance(manager_object).myPeerID().hash(), None)
+
+# MC Framework delegate definitions
 
 def session_peer_didChangeState_(_self,_cmd,_session,_peerID,_state):
   self = _get_self(_session)
@@ -99,8 +137,6 @@ def browser_foundPeer_withDiscoveryInfo_(_self, _cmd, _browser, _peerID, _info):
   peerID = ObjCInstance(_peerID)
   browser = ObjCInstance(_browser)
   browser.invitePeer_toSession_withContext_timeout_(peerID,self.session,None,0)
-  #mySession.connectPeer_withNearbyConnectionData_(peerID,None)
-  #print('#',peerID,ObjCInstance(_info))
 
 def browser_lostPeer_(_self, _cmd, browser, peer):
   #print ('lost peer')
@@ -116,7 +152,7 @@ except:
 class _block_descriptor (Structure):
   _fields_ = [('reserved', c_ulong), ('size', c_ulong), ('copy_helper', c_void_p), ('dispose_helper', c_void_p), ('signature', c_char_p)]
 InvokeFuncType = ctypes.CFUNCTYPE(None, *[c_void_p,ctypes.c_bool,c_void_p])
-class block_literal(Structure):
+class _block_literal(Structure):
   _fields_ = [('isa', c_void_p), ('flags', c_int), ('reserved', c_int), ('invoke', InvokeFuncType), ('descriptor', _block_descriptor)]
 
 # Advertiser Delegate
@@ -125,8 +161,8 @@ def advertiser_didReceiveInvitationFromPeer_withContext_invitationHandler_(_self
   if self is None: return
   invitation_handler = ObjCInstance(_invitationHandler)
   retain_global(invitation_handler)
-  blk=block_literal.from_address(_invitationHandler)
-  blk.invoke(invitation_handler,True, self.session)
+  blk = _block_literal.from_address(_invitationHandler)
+  blk.invoke(invitation_handler, True, self.session)
 
 try:
   AdvertiserDelegate = ObjCClass('AdvertiserDelegate')
@@ -139,6 +175,8 @@ except:
   AdvertiserDelegate = create_objc_class('AdvertiserDelegate',methods=[advertiser_didReceiveInvitationFromPeer_withContext_invitationHandler_])
   ADelegate = AdvertiserDelegate.alloc().init()
 
+
+# Wrapper class
 
 class MultipeerConnectivity():
   ''' Multipeer communications. Subclass this class to define how you want to react to added or removed peers, and to process incoming messages from peers.
@@ -172,19 +210,15 @@ class MultipeerConnectivity():
     self.session = MCSession.alloc().initWithPeer_(self.my_id)
     self.session.setDelegate_(SDelegate)
 
-    #print('my ID',self.my_id)
-
+    # Create browser and set delegate
     self.browser = MCNearbyServiceBrowser.alloc().initWithPeer_serviceType_(self.my_id, self.service_type)
     self.browser.setDelegate_(Bdelegate)
-    self.browser.startBrowsingForPeers()
 
-    # Create Server and set delegate
+    # Create advertiser and set delegate
     self.advertiser = MCNearbyServiceAdvertiser.alloc().initWithPeer_discoveryInfo_serviceType_(self.my_id, ns({}), self.service_type)
     self.advertiser.setDelegate_(ADelegate)
 
-    # Start Server
-    self.advertiser.startAdvertisingPeer()
-    #print('Server start, ID is : ',self.my_id)
+    self.start_looking_for_peers()
 
   def peer_added(self, peerID):
     ''' Override handling of new peers in a subclass. '''
@@ -201,6 +235,11 @@ class MultipeerConnectivity():
       peer.display_name = str(peer.displayName())
       peer_list.append(peer)
     return peer_list
+
+  def start_looking_for_peers(self):
+    ''' Start conmecting to available peers. '''
+    self.browser.startBrowsingForPeers()
+    self.advertiser.startAdvertisingPeer()
 
   def stop_looking_for_peers(self):
     ''' Stop advertising for new connections, e.g. when you have all the players and start a game, and do not want new players joining in the middle. '''
@@ -230,6 +269,8 @@ class MultipeerConnectivity():
     self.session.disconnect()
 
   def end_all(self):
+    ''' Disconnects from the multipeer session and removes internal references.
+    Further communications will require instantiating a new MultipeerCommunications (sub)class. '''
     self.stop_looking_for_peers()
     self.disconnect()
     #self.session.cancelConnectPeer_(self.my_id)
@@ -239,6 +280,8 @@ class MultipeerConnectivity():
     del mc_managers[self.my_id.hash()]
 
 if __name__ == '__main__':
+
+  # Peer chat UI as a demonstration
 
   import ui
   
