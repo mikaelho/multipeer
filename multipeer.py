@@ -1,14 +1,13 @@
 # -*- coding: utf-8 -*-
 
-from objc_util import *
-import ctypes, re, json
-
 '''
 # Multipeer Connectivity for Pythonista
 
-This is a Pythonista wrapper around iOS [Multipeer Connectivity](https://developer.apple.com/documentation/multipeerconnectivity?language=objc).
+This is a [Pythonista](http://omz-software.com/pythonista/) wrapper around iOS [Multipeer Connectivity](https://developer.apple.com/documentation/multipeerconnectivity?language=objc).
 
-Here's a minimal usage example, a line-based chat application.
+Multipeer connectivity allows you to find and exchange information with devices in the same network neighborhood (same wifi or bluetooth), without going through some server.
+
+Here's a minimal usage example, a line-based chat:
 
     import multipeer
 
@@ -23,20 +22,25 @@ Here's a minimal usage example, a line-based chat application.
     finally:
       mc.end_all()
 
-It is functional, even though the prompts and incoming messages tend to get messily mixed up. You can also run the `multipeer.py` file to try out a cleaner Pythonista UI version of the example above.
+It is functional, even though the prompts and incoming messages tend to get messily mixed up. You can also run the `multipeer.py` file to try out a cleaner Pythonista UI version of the chat.
 
 Here are the things to note when starting to use this library:
 peertopeer
+message
 expected flow
 subclass
 peer ID
 
 # Details
-Secure, reliable, transient
+Autoinvite
+Defaults: Secure, reliable, transient
 Some memory leaking
 Discovery info ignored
 No way to kick anyone out
 '''
+
+from objc_util import *
+import ctypes, re, json
 
 NSBundle.bundle(Path="/System/Library/Frameworks/MultipeerConnectivity.framework").load()
 MCPeerID=ObjCClass('MCPeerID')
@@ -76,8 +80,11 @@ def session_didReceiveData_fromPeer_(_self,_cmd,_session,_data,_peerID):
 def session_didReceiveStream_withName_fromPeer_(_self,_cmd,_session,_stream,_streamName,_peerID):
   print('Received stream', _streamName, 'but streams are not currently supported by this API')
 
-SessionDelegate = create_objc_class('SessionDelegate',methods=[session_peer_didChangeState_, session_didReceiveData_fromPeer_, session_didReceiveStream_withName_fromPeer_],protocols=['MCSessionDelegate'])
-SDelegate = SessionDelegate.alloc().init()
+try:
+  SDelegate = SessionDelegate.alloc().init()
+except:
+  SessionDelegate = create_objc_class('SessionDelegate',methods=[session_peer_didChangeState_, session_didReceiveData_fromPeer_, session_didReceiveStream_withName_fromPeer_],protocols=['MCSessionDelegate'])
+  SDelegate = SessionDelegate.alloc().init()
 
 def browser_didNotStartBrowsingForPeers_(_self,_cmd,_browser,_err):
   print ('ERROR!!!')
@@ -95,8 +102,11 @@ def browser_lostPeer_(_self, _cmd, browser, peer):
   #print ('lost peer')
   pass
 
-BrowserDelegate = create_objc_class('BrowserDelegate',methods=[browser_foundPeer_withDiscoveryInfo_, browser_lostPeer_, browser_didNotStartBrowsingForPeers_],protocols=['MCNearbyServiceBrowserDelegate'])
-Bdelegate = BrowserDelegate.alloc().init()
+try:
+  Bdelegate = BrowserDelegate.alloc().init()
+except:
+  BrowserDelegate = create_objc_class('BrowserDelegate',methods=[browser_foundPeer_withDiscoveryInfo_, browser_lostPeer_, browser_didNotStartBrowsingForPeers_],protocols=['MCNearbyServiceBrowserDelegate'])
+  Bdelegate = BrowserDelegate.alloc().init()
 
 class _block_descriptor (Structure):
   _fields_ = [('reserved', c_ulong), ('size', c_ulong), ('copy_helper', c_void_p), ('dispose_helper', c_void_p), ('signature', c_char_p)]
@@ -116,9 +126,9 @@ try:
   ADelegate = AdvertiserDelegate.alloc().init()
 except:
   f= advertiser_didReceiveInvitationFromPeer_withContext_invitationHandler_
-  f.argtypes  =[c_void_p]*4
+  f.argtypes = [c_void_p]*4
   f.restype = None
-  f.encoding=b'v@:@@@@?'
+  f.encoding = b'v@:@@@@?'
   AdvertiserDelegate = create_objc_class('AdvertiserDelegate',methods=[advertiser_didReceiveInvitationFromPeer_withContext_invitationHandler_])
   ADelegate = AdvertiserDelegate.alloc().init()
 
