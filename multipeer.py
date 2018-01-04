@@ -56,12 +56,13 @@ mc_managers = {}
 def _get_self(manager_object):
   ''' Expects a 'manager object', i.e. one of session, advertiser or browser, and uses the contained peer ID to locate the right Python manager object. '''
   global mc_managers
-  return mc_managers[ObjCInstance(manager_object).myPeerID().hash()]
+  return mc_managers.get(ObjCInstance(manager_object).myPeerID().hash(), None)
 
 def session_peer_didChangeState_(_self,_cmd,_session,_peerID,_state):
+  self = _get_self(_session)
+  if self is None: return
   peerID = ObjCInstance(_peerID)
   peerID.display_name = str(peerID.displayName())
-  self = _get_self(_session)
   #print('session change',peerID,_state)
   if _state == 2:
     self.peer_added(peerID)
@@ -70,6 +71,7 @@ def session_peer_didChangeState_(_self,_cmd,_session,_peerID,_state):
 
 def session_didReceiveData_fromPeer_(_self,_cmd,_session,_data,_peerID):
   self = _get_self(_session)
+  if self is None: return
   peerID = ObjCInstance(_peerID)
   peerID.display_name = str(peerID.displayName())
   decoded_data = nsdata_to_bytes(ObjCInstance(_data)).decode()
@@ -81,6 +83,7 @@ def session_didReceiveStream_withName_fromPeer_(_self,_cmd,_session,_stream,_str
   print('Received stream', _streamName, 'but streams are not currently supported by this API')
 
 try:
+  SessionDelegate = ObjCClass('SessionDelegate')
   SDelegate = SessionDelegate.alloc().init()
 except:
   SessionDelegate = create_objc_class('SessionDelegate',methods=[session_peer_didChangeState_, session_didReceiveData_fromPeer_, session_didReceiveStream_withName_fromPeer_],protocols=['MCSessionDelegate'])
@@ -91,6 +94,7 @@ def browser_didNotStartBrowsingForPeers_(_self,_cmd,_browser,_err):
 
 def browser_foundPeer_withDiscoveryInfo_(_self, _cmd, _browser, _peerID, _info):
   self = _get_self(_browser)
+  if self is None: return
 
   peerID = ObjCInstance(_peerID)
   browser = ObjCInstance(_browser)
@@ -103,6 +107,7 @@ def browser_lostPeer_(_self, _cmd, browser, peer):
   pass
 
 try:
+  BrowserDelegate = ObjCClass('BrowserDelegate')
   Bdelegate = BrowserDelegate.alloc().init()
 except:
   BrowserDelegate = create_objc_class('BrowserDelegate',methods=[browser_foundPeer_withDiscoveryInfo_, browser_lostPeer_, browser_didNotStartBrowsingForPeers_],protocols=['MCNearbyServiceBrowserDelegate'])
@@ -115,14 +120,16 @@ class block_literal(Structure):
   _fields_ = [('isa', c_void_p), ('flags', c_int), ('reserved', c_int), ('invoke', InvokeFuncType), ('descriptor', _block_descriptor)]
 
 # Advertiser Delegate
-def advertiser_didReceiveInvitationFromPeer_withContext_invitationHandler_(_self,_cmd,advertiser,peerID,context,invitationHandler):
-  self = _get_self(advertiser)
-  invitation_handler = ObjCInstance(invitationHandler)
+def advertiser_didReceiveInvitationFromPeer_withContext_invitationHandler_(_self,_cmd,_advertiser,_peerID,_context,_invitationHandler):
+  self = _get_self(_advertiser)
+  if self is None: return
+  invitation_handler = ObjCInstance(_invitationHandler)
   retain_global(invitation_handler)
-  blk=block_literal.from_address(invitationHandler)
+  blk=block_literal.from_address(_invitationHandler)
   blk.invoke(invitation_handler,True, self.session)
 
 try:
+  AdvertiserDelegate = ObjCClass('AdvertiserDelegate')
   ADelegate = AdvertiserDelegate.alloc().init()
 except:
   f= advertiser_didReceiveInvitationFromPeer_withContext_invitationHandler_
@@ -225,6 +232,10 @@ class MultipeerConnectivity():
   def end_all(self):
     self.stop_looking_for_peers()
     self.disconnect()
+    self.advertiser.setDelegate_(None)
+    self.browser.setDelegate_(None)
+    self.session.setDelegate_(None)
+    del mc_managers[self.my_id.hash()]
 
 if __name__ == '__main__':
 
@@ -236,6 +247,8 @@ if __name__ == '__main__':
       peer_list = self.get_peers()
       as_text = 'Chatting with:\n' +  '\n'.join([peer.display_name for peer in peer_list])
       peers.text = as_text
+      
+      ids = 'Peers:\n' +  '\n'.join(str(peer) for peer in peer_list)
       
     def peer_removed(self, peer):
       self.peer_added(peer)
@@ -261,6 +274,7 @@ if __name__ == '__main__':
         peers.text = 'Looking for peers'
         
         self.mc = ChatPeer(service_type='chat-demo', display_name=chat_name)
+        print('Mine', self.mc.my_id)
         
     def send_message(self, sender):
       self.message_count += 1
