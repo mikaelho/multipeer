@@ -306,6 +306,7 @@ if __name__ == '__main__':
     def __init__(self, **kwargs):
       super().__init__(**kwargs)
       self.message_count = 0
+      self.mc = None
     
     def trigger_start_chat(self, sender):
       name_field.end_editing()
@@ -333,7 +334,8 @@ if __name__ == '__main__':
       message_entry.text = ''
       
     def will_close(self):
-      self.mc.end_all()
+      if self.mc != None:
+        self.mc.end_all()
   
   chat = ChatView(background_color=(.8, .92, 1.0))
   chat.present()
