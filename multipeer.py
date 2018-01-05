@@ -5,9 +5,11 @@
 
 This is a [Pythonista](http://omz-software.com/pythonista/) wrapper around iOS [Multipeer Connectivity](https://developer.apple.com/documentation/multipeerconnectivity?language=objc).
 
-Multipeer connectivity allows you to find and exchange information between 2-8 devices in the same network neighborhood (same wifi or bluetooth), without going through some server.
+Multipeer connectivity allows you to find and exchange information between 2-8 iOS and Mac devices in the same network neighborhood (same wifi or bluetooth), without going through some server.
 
-Here's a minimal usage example, a line-based chat:
+Sample use cases include games, chats, file exchange (like AirDrop) and so on.
+
+Here's a minimal usage example, a line-based chat. You need to be running the same code on all devices participating in the chat.
 
     import multipeer
 
