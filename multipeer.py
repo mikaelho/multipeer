@@ -290,14 +290,15 @@ if __name__ == '__main__':
   class ChatPeer(MultipeerConnectivity):
     
     def peer_added(self, peer):
+      self.show_updated_peer_list()
+      
+    def peer_removed(self, peer):
+      self.show_updated_peer_list()
+      
+    def show_updated_peer_list(self):
       peer_list = self.get_peers()
       as_text = 'Chatting with:\n' +  '\n'.join([peer.display_name for peer in peer_list])
       peers.text = as_text
-      
-      ids = 'Peers:\n' +  '\n'.join(str(peer) for peer in peer_list)
-      
-    def peer_removed(self, peer):
-      self.peer_added(peer)
       
     def receive(self, message, from_peer):
       msg = from_peer.display_name + ': ' + message['text'] + ' (#' + str(message['count']) + ')\n'
