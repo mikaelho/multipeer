@@ -91,7 +91,7 @@ MCNearbyServiceBrowser=ObjCClass('MCNearbyServiceBrowser')
 
 mc_managers = {}
 
-def _get_self(manager_object):
+def get_self(manager_object):
   ''' Expects a 'manager object', i.e. one of session, advertiser or browser, and uses the contained peer ID to locate the right Python manager object. '''
   global mc_managers
   return mc_managers.get(ObjCInstance(manager_object).myPeerID().hash(), None)
@@ -99,7 +99,7 @@ def _get_self(manager_object):
 # MC Framework delegate definitions
 
 def session_peer_didChangeState_(_self,_cmd,_session,_peerID,_state):
-  self = _get_self(_session)
+  self = get_self(_session)
   if self is None: return
   peerID = ObjCInstance(_peerID)
   peerID.display_name = str(peerID.displayName())
@@ -110,7 +110,7 @@ def session_peer_didChangeState_(_self,_cmd,_session,_peerID,_state):
     self.peer_removed(peerID)
 
 def session_didReceiveData_fromPeer_(_self,_cmd,_session,_data,_peerID):
-  self = _get_self(_session)
+  self = get_self(_session)
   if self is None: return
   peerID = ObjCInstance(_peerID)
   peerID.display_name = str(peerID.displayName())
@@ -122,18 +122,19 @@ def session_didReceiveData_fromPeer_(_self,_cmd,_session,_data,_peerID):
 def session_didReceiveStream_withName_fromPeer_(_self,_cmd,_session,_stream,_streamName,_peerID):
   print('Received stream', _streamName, 'but streams are not currently supported by this API')
 
-try:
-  SessionDelegate = ObjCClass('SessionDelegate')
-  SDelegate = SessionDelegate.alloc().init()
-except:
-  SessionDelegate = create_objc_class('SessionDelegate',methods=[session_peer_didChangeState_, session_didReceiveData_fromPeer_, session_didReceiveStream_withName_fromPeer_],protocols=['MCSessionDelegate'])
-  SDelegate = SessionDelegate.alloc().init()
+#try:
+#  SessionDelegate = ObjCClass('SessionDelegate')
+#  SDelegate = SessionDelegate.alloc().init()
+#except:
+
+SessionDelegate = create_objc_class('SessionDelegate',methods=[session_peer_didChangeState_, session_didReceiveData_fromPeer_, session_didReceiveStream_withName_fromPeer_],protocols=['MCSessionDelegate'])
+SDelegate = SessionDelegate.alloc().init()
 
 def browser_didNotStartBrowsingForPeers_(_self,_cmd,_browser,_err):
   print ('ERROR!!!')
 
 def browser_foundPeer_withDiscoveryInfo_(_self, _cmd, _browser, _peerID, _info):
-  self = _get_self(_browser)
+  self = get_self(_browser)
   if self is None: return
 
   peerID = ObjCInstance(_peerID)
@@ -144,12 +145,13 @@ def browser_lostPeer_(_self, _cmd, browser, peer):
   #print ('lost peer')
   pass
 
-try:
-  BrowserDelegate = ObjCClass('BrowserDelegate')
-  Bdelegate = BrowserDelegate.alloc().init()
-except:
-  BrowserDelegate = create_objc_class('BrowserDelegate',methods=[browser_foundPeer_withDiscoveryInfo_, browser_lostPeer_, browser_didNotStartBrowsingForPeers_],protocols=['MCNearbyServiceBrowserDelegate'])
-  Bdelegate = BrowserDelegate.alloc().init()
+#try:
+#  BrowserDelegate = ObjCClass('BrowserDelegate')
+#  Bdelegate = BrowserDelegate.alloc().init()
+#except:
+
+BrowserDelegate = create_objc_class('BrowserDelegate',methods=[browser_foundPeer_withDiscoveryInfo_, browser_lostPeer_, browser_didNotStartBrowsingForPeers_],protocols=['MCNearbyServiceBrowserDelegate'])
+Bdelegate = BrowserDelegate.alloc().init()
 
 class _block_descriptor (Structure):
   _fields_ = [('reserved', c_ulong), ('size', c_ulong), ('copy_helper', c_void_p), ('dispose_helper', c_void_p), ('signature', c_char_p)]
@@ -159,23 +161,24 @@ class _block_literal(Structure):
 
 # Advertiser Delegate
 def advertiser_didReceiveInvitationFromPeer_withContext_invitationHandler_(_self,_cmd,_advertiser,_peerID,_context,_invitationHandler):
-  self = _get_self(_advertiser)
+  self = get_self(_advertiser)
   if self is None: return
   invitation_handler = ObjCInstance(_invitationHandler)
   retain_global(invitation_handler)
   blk = _block_literal.from_address(_invitationHandler)
   blk.invoke(invitation_handler, True, self.session)
 
-try:
-  AdvertiserDelegate = ObjCClass('AdvertiserDelegate')
-  ADelegate = AdvertiserDelegate.alloc().init()
-except:
-  f= advertiser_didReceiveInvitationFromPeer_withContext_invitationHandler_
-  f.argtypes = [c_void_p]*4
-  f.restype = None
-  f.encoding = b'v@:@@@@?'
-  AdvertiserDelegate = create_objc_class('AdvertiserDelegate',methods=[advertiser_didReceiveInvitationFromPeer_withContext_invitationHandler_])
-  ADelegate = AdvertiserDelegate.alloc().init()
+#try:
+#  AdvertiserDelegate = ObjCClass('AdvertiserDelegate')
+#  ADelegate = AdvertiserDelegate.alloc().init()
+#except:
+
+f = advertiser_didReceiveInvitationFromPeer_withContext_invitationHandler_
+f.argtypes = [c_void_p]*4
+f.restype = None
+f.encoding = b'v@:@@@@?'
+AdvertiserDelegate = create_objc_class('AdvertiserDelegate',methods=[advertiser_didReceiveInvitationFromPeer_withContext_invitationHandler_])
+ADelegate = AdvertiserDelegate.alloc().init()
 
 
 # Wrapper class
