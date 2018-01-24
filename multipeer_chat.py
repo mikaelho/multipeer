@@ -5,13 +5,14 @@ if __name__ == '__main__':
   # Peer chat UI as a demonstration
 
   import ui
-  import multipeer
   
-  class ChatPeer(multipeer.MultipeerConnectivity):
+  class ChatPeer(MultipeerConnectivity):
     
+    @on_main_thread
     def peer_added(self, peer):
       self.show_updated_peer_list()
       
+    @on_main_thread
     def peer_removed(self, peer):
       self.show_updated_peer_list()
       
@@ -20,6 +21,7 @@ if __name__ == '__main__':
       as_text = 'Chatting with:\n' +  '\n'.join([peer.display_name for peer in peer_list])
       peers.text = as_text
       
+    @on_main_thread
     def receive(self, message, from_peer):
       msg = from_peer.display_name + ': ' + message['text'] + ' (#' + str(message['count']) + ')\n'
       received_messages.text += msg
