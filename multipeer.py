@@ -24,7 +24,7 @@ Here's a minimal usage example, a line-based chat. You need to be running the sa
     finally:
       mc.end_all()
 
-It is functional, even though the prompts and incoming messages tend to get mixed up. You can also run the `multipeer.py` file to try out a cleaner Pythonista UI version of the chat.
+It is functional, even though the prompts and incoming messages tend to get mixed up. You can try it out by running the `multipeer.py` file. There is also a cleaner Pythonista UI version of the chat in `multipeer_chat`.
 
 Here are the things to note when starting to use this library:
   
@@ -35,7 +35,7 @@ This wrapper around the MC framework makes no assumptions regarding the relation
 ## Expected usage
 
 1. Create a subclass of `MultipeerCommunications` to handle messages from the framework (see separate topic, below).
-2. Instantiate the subclass with your service type and peer display name (see the class description).
+2. Instantiate the subclass with your service type, peer display name and optional initial context data (see the class description).
 3. Wait for peers to connect (see the `peer_added` and `get_peers` methods).
 4. Optionally, have each participating peer stop accepting further peers, e.g. for the duration of a game (see the `stop_looking_for_peers` method).
 5. Send and receive messages (see a separate topic, below).
@@ -64,6 +64,8 @@ This wrapper chooses to handle callbacks via subclassing rather than requiring a
 * `receive`
 
 The versions of these methods in the `MultipeerConnectivity` class just print out the information received.
+
+Note that if these method update the UI, you should decorate them with `objc_util.on_main_thread`.
 
 ## Additional details
 
@@ -105,7 +107,7 @@ def session_peer_didChangeState_(_self,_cmd,_session,_peerID,_state):
   peerID.display_name = str(peerID.displayName())
   #print('session change',peerID,_state)
   if _state == 2:
-    self.peer_added(peerID)
+    self._peer_collector(peerID)
   if _state is None:
     self.peer_removed(peerID)
 
@@ -131,7 +133,7 @@ SessionDelegate = create_objc_class('SessionDelegate',methods=[session_peer_didC
 SDelegate = SessionDelegate.alloc().init()
 
 def browser_didNotStartBrowsingForPeers_(_self,_cmd,_browser,_err):
-  print ('ERROR!!!')
+  print('MultipeerConnectivity framework error')
 
 def browser_foundPeer_withDiscoveryInfo_(_self, _cmd, _browser, _peerID, _info):
   self = get_self(_browser)
@@ -139,7 +141,8 @@ def browser_foundPeer_withDiscoveryInfo_(_self, _cmd, _browser, _peerID, _info):
 
   peerID = ObjCInstance(_peerID)
   browser = ObjCInstance(_browser)
-  browser.invitePeer_toSession_withContext_timeout_(peerID,self.session,None,0)
+  context = json.dumps(self.initial_data).encode() if self.initial_data is not None else None
+  browser.invitePeer_toSession_withContext_timeout_(peerID, self.session, context, 0)
 
 def browser_lostPeer_(_self, _cmd, browser, peer):
   #print ('lost peer')
@@ -160,9 +163,16 @@ class _block_literal(Structure):
   _fields_ = [('isa', c_void_p), ('flags', c_int), ('reserved', c_int), ('invoke', InvokeFuncType), ('descriptor', _block_descriptor)]
 
 # Advertiser Delegate
-def advertiser_didReceiveInvitationFromPeer_withContext_invitationHandler_(_self,_cmd,_advertiser,_peerID,_context,_invitationHandler):
+def advertiser_didReceiveInvitationFromPeer_withContext_invitationHandler_(_self, _cmd, _advertiser, _peerID, _context, _invitationHandler):
   self = get_self(_advertiser)
   if self is None: return
+  peer_id = ObjCInstance(_peerID)
+  if _context is not None:
+    decoded_data = nsdata_to_bytes(ObjCInstance(_context)).decode()
+    #print('Received data:',decoded_data)
+    initial_data = json.loads(decoded_data)
+    self.initial_peer_data[peer_id.hash()] = initial_data
+  self._peer_collector(peer_id)
   invitation_handler = ObjCInstance(_invitationHandler)
   retain_global(invitation_handler)
   blk = _block_literal.from_address(_invitationHandler)
@@ -192,14 +202,18 @@ class MultipeerConnectivity():
   
   Arguments:
     
-  * `display_name` - This peer's display name (e.g. a player name).
+  * `display_name` - This peer's display name (e.g. a player name). Must not be None or an empty string, and must be at most 63 bytes long (UTF-8 encoded).
   * `service_type` - String that must match with that of the peers in order for a connection to be established. Must be 1-15 characters in length and contain only a-z, 0-9, or '-'.
+  * `initial_data` - Any JSON-serializable data that can be requested by peers with a call to `get_initial_data()`.
   
   Created object will immediately start advertising and browsing for peers.
   '''
 
-  def __init__(self, display_name='Peer', service_type='dev-srv'):
+  def __init__(self, display_name='Peer', service_type='dev-srv', initial_data=None):
     global mc_managers
+
+    if display_name is None or display_name == '' or len(display_name.encode()) > 63:
+      raise ValueError('display_name must not be None or empty string, and must be at most 63 bytes long (UTF-8 encoded)')
 
     self.service_type = service_type
     check_re = re.compile(r'[^a-z0-9\-.]')
@@ -209,6 +223,10 @@ class MultipeerConnectivity():
 
     self.my_id = MCPeerID.alloc().initWithDisplayName(display_name)
     self.my_id.display_name = str(self.my_id.displayName())
+    
+    self.initial_data = initial_data
+    self.initial_peer_data = {}
+    self._peer_connection_hit_count = {}
 
     mc_managers[self.my_id.hash()] = self
 
@@ -225,13 +243,14 @@ class MultipeerConnectivity():
 
     self.start_looking_for_peers()
 
-  def peer_added(self, peerID):
+  def peer_added(self, peer_id):
     ''' Override handling of new peers in a subclass. '''
-    print('Added peer', peerID.display_name)
+    print('Added peer', peer_id.display_name)
+    print('Initial data:', self.get_initial_data(peer_id))
 
-  def peer_removed(self, peerID):
+  def peer_removed(self, peer_id):
     ''' Override handling of lost peers in a subclass. '''
-    print('Removed peer', peerID.display_name)
+    print('Removed peer', peer_id.display_name)
 
   def get_peers(self):
     ''' Get a list of peers currently connected. '''
@@ -240,6 +259,10 @@ class MultipeerConnectivity():
       peer.display_name = str(peer.displayName())
       peer_list.append(peer)
     return peer_list
+
+  def get_initial_data(self, peer_id):
+    ''' Returns initial context data provided by the peer, or None. '''
+    return self.initial_peer_data.get(peer_id.hash(), None)
 
   def start_looking_for_peers(self):
     ''' Start conmecting to available peers. '''
@@ -278,94 +301,32 @@ class MultipeerConnectivity():
     Further communications will require instantiating a new MultipeerCommunications (sub)class. '''
     self.stop_looking_for_peers()
     self.disconnect()
-    #self.session.cancelConnectPeer_(self.my_id)
+
     #self.advertiser.setDelegate_(None)
     #self.browser.setDelegate_(None)
     #self.session.setDelegate_(None)
     del mc_managers[self.my_id.hash()]
+    
+  def _peer_collector(self, peer_id):
+    ''' Makes sure that `peer_added` is only called after the full "two-way handshake" is complete and the initial context info has been captured. '''
+    self._peer_connection_hit_count.setdefault(peer_id.hash(), 0)
+    self._peer_connection_hit_count[peer_id.hash()] += 1
+    if self._peer_connection_hit_count[peer_id.hash()] > 1:
+      self.peer_added(peer_id)
+      
+    
 
 if __name__ == '__main__':
 
-  # Peer chat UI as a demonstration
+    import multipeer, platform
 
-  import ui
-  
-  class ChatPeer(MultipeerConnectivity):
+    my_name = input('Name: ')
     
-    def peer_added(self, peer):
-      self.show_updated_peer_list()
-      
-    def peer_removed(self, peer):
-      self.show_updated_peer_list()
-      
-    def show_updated_peer_list(self):
-      peer_list = self.get_peers()
-      as_text = 'Chatting with:\n' +  '\n'.join([peer.display_name for peer in peer_list])
-      peers.text = as_text
-      
-    def receive(self, message, from_peer):
-      msg = from_peer.display_name + ': ' + message['text'] + ' (#' + str(message['count']) + ')\n'
-      received_messages.text += msg
-  
-  class ChatView(ui.View):
+    mc = multipeer.MultipeerConnectivity(display_name=my_name, service_type='chat', initial_data=platform.platform())
     
-    def __init__(self, **kwargs):
-      super().__init__(**kwargs)
-      self.message_count = 0
-      self.mc = None
-    
-    def trigger_start_chat(self, sender):
-      name_field.end_editing()
-    
-    def start_chat(self, sender):
-      chat_name = name_field.text
-      if len(chat_name) > 0:
-        sender.touch_enabled = False
-        name_field.end_editing()
-        name_field.editable = False
-        message_entry.touch_enabled = True
-        send_button.touch_enabled = True
-        peers.text = 'Looking for peers'
-        
-        self.mc = ChatPeer(service_type='chat-demo', display_name=chat_name)
-        
-    def send_message(self, sender):
-      self.message_count += 1
-      message = {
-        'text': message_entry.text,
-        'count': self.message_count
-      }
-      self.mc.send(message)
-      self.mc.receive(message, self.mc.my_id)
-      message_entry.text = ''
-      
-    def will_close(self):
-      if self.mc != None:
-        self.mc.end_all()
-  
-  chat = ChatView(background_color=(.8, .92, 1.0))
-  chat.present()
-  
-  (w,h) = chat.width, chat.height
-  
-  name_field = ui.TextField(placeholder='Your display name', frame=(20,20,w-80, 40), flex='W')
-  go_button = ui.Button(title='Go', frame=(0.9*w,20,80,80), flex='W', background_color='grey', tint_color='white')
-  name_field.action = chat.start_chat
-  go_button.action = chat.trigger_start_chat
-  
-  peers = ui.TextView(text='Enter your name first', editable=False, frame=(20, 80, w-40, 80), flex='WH')
-  
-  message_entry = ui.TextField(placeholder='Your message', frame=(20,180,w-80,40), flex='W', touch_enabled=False)
-  send_button = ui.Button(title='Send', frame=(w-60,80,40,40), flex='W', background_color='grey', tint_color='white', touch_enabled=False)
-  message_entry.action = send_button.action = chat.send_message
-  
-  received_messages = ui.TextView(editable=False, frame=(20,240,w-40,h-260), flex='WH')
-  
-  chat.add_subview(name_field)
-  chat.add_subview(go_button)
-  chat.add_subview(peers)
-  chat.add_subview(message_entry)
-  chat.add_subview(send_button)
-  chat.add_subview(received_messages)
-  go_button.frame=(w-60,20,40,40)
-  send_button.frame=(w-60,180,40,40)
+    try:
+      while True:
+        chat_message = input('Message: ')
+        mc.send(chat_message)
+    finally:
+      mc.end_all()
