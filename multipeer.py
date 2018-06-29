@@ -274,11 +274,12 @@ class MultipeerConnectivity():
     self.advertiser.stopAdvertisingPeer()
     self.browser.stopBrowsingForPeers()
 
-  def send(self, message, to_peer=None):
+  def send(self, message, to_peer=None, reliable=True):
     ''' Send a message to some or all peers.
 
     * `message` - to be sent to the peer(s). Must be JSON-serializable.
     * `to_peer` - receiver peer IDs. Can be a single peer ID, a list of peer IDs, or left out (None) for sending to all connected peers.
+    * `reliable` - MCSessionSendDataMode. Can be True or False, or left out (True). Indicates whether delivery of data should be guaranteed.
     '''
     if type(to_peer) == list:
       peers = to_peer
@@ -286,7 +287,7 @@ class MultipeerConnectivity():
       peers = self.get_peers()
     else:
       peers = [to_peer]
-    self.session.sendData_toPeers_withMode_error_(json.dumps(message).encode(), peers, 0, None)
+    self.session.sendData_toPeers_withMode_error_(json.dumps(message).encode(), peers,  0 if reliable else 1, None)
 
   def receive(self, message, from_peer):
     ''' Override in a subclass to handle incoming messages. '''
