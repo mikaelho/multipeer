@@ -5,8 +5,10 @@ if __name__ == '__main__':
   # Peer chat UI as a demonstration
 
   import ui
+  import multipeer
+  from objc_util import *
   
-  class ChatPeer(MultipeerConnectivity):
+  class ChatPeer(multipeer.MultipeerConnectivity):
     
     @on_main_thread
     def peer_added(self, peer):
