@@ -2,9 +2,11 @@
 
 This is a [Pythonista](http://omz-software.com/pythonista/) wrapper around iOS [Multipeer Connectivity](https://developer.apple.com/documentation/multipeerconnectivity?language=objc).
 
-Multipeer connectivity allows you to find and exchange information between 2-8 devices in the same network neighborhood (same wifi or bluetooth), without going through some server.
+Multipeer connectivity allows you to find and exchange information between 2-8 iOS and Mac devices in the same network neighborhood (same wifi or bluetooth), without going through some server.
 
-Here's a minimal usage example, a line-based chat:
+Sample use cases include games, chats, file exchange (like AirDrop) and so on.
+
+Here's a minimal usage example, a line-based chat. You need to be running the same code on all devices participating in the chat.
 
     import multipeer
 
@@ -19,7 +21,7 @@ Here's a minimal usage example, a line-based chat:
     finally:
       mc.end_all()
 
-It is functional, even though the prompts and incoming messages tend to get mixed up. You can also run the `multipeer.py` file to try out a cleaner Pythonista UI version of the chat.
+This example is functional, even though the prompts and incoming messages tend to get mixed up. You can try it out by running the `multipeer.py` file. There is also a cleaner Pythonista UI version of the chat in `multipeer_chat`.
 
 Here are the things to note when starting to use this library:
   
@@ -30,7 +32,7 @@ This wrapper around the MC framework makes no assumptions regarding the relation
 ## Expected usage
 
 1. Create a subclass of `MultipeerCommunications` to handle messages from the framework (see separate topic, below).
-2. Instantiate the subclass with your service type and peer display name (see the class description).
+2. Instantiate the subclass with your service type, peer display name and optional initial context data (see the class description).
 3. Wait for peers to connect (see the `peer_added` and `get_peers` methods).
 4. Optionally, have each participating peer stop accepting further peers, e.g. for the duration of a game (see the `stop_looking_for_peers` method).
 5. Send and receive messages (see a separate topic, below).
@@ -57,8 +59,11 @@ This wrapper chooses to handle callbacks via subclassing rather than requiring a
 * `peer_added`
 * `peer_removed`
 * `receive`
+* `stream_receive`
 
 The versions of these methods in the `MultipeerConnectivity` class just print out the information received.
+
+Note that if these method update the UI, you should decorate them with `objc_util.on_main_thread`.
 
 ## Additional details
 
@@ -68,12 +73,12 @@ The versions of these methods in the `MultipeerConnectivity` class just print ou
 * Following defaults are used and are not currently configurable without resorting to ObjC:
   * Secure - Encryption is required on all connections.
   * Not secure - A specific security identity cannot be set.
-  * Reliable - When sending data to other peers, framework tries to guarantee delivery of each message, enqueueing and retransmitting data as needed, and ensuring in-order delivery.
 
 # API
 
 * [Class: MultipeerConnectivity](#class-multipeerconnectivity)
   * [Methods](#methods)
+* [Functions](#functions)
 
 
 ## Class: MultipeerConnectivity
@@ -86,25 +91,31 @@ Constructor:
 
 Arguments:
   
-* `display_name` - This peer's display name (e.g. a player name).
+* `display_name` - This peer's display name (e.g. a player name). Must not be None or an empty string, and must be at most 63 bytes long (UTF-8 encoded).
 * `service_type` - String that must match with that of the peers in order for a connection to be established. Must be 1-15 characters in length and contain only a-z, 0-9, or '-'.
+* `initial_data` - Any JSON-serializable data that can be requested by peers with a call to `get_initial_data()`.
+* `initialize_streams` - If True, a stream is set up to any peer that connects.
 
 Created object will immediately start advertising and browsing for peers.
 
 ## Methods
 
 
-#### `peer_added(self, peerID)`
+#### `peer_added(self, peer_id)`
 
   Override handling of new peers in a subclass. 
 
-#### `peer_removed(self, peerID)`
+#### `peer_removed(self, peer_id)`
 
   Override handling of lost peers in a subclass. 
 
 #### `get_peers(self)`
 
   Get a list of peers currently connected. 
+
+#### `get_initial_data(self, peer_id)`
+
+  Returns initial context data provided by the peer, or None. 
 
 #### `start_looking_for_peers(self)`
 
@@ -114,16 +125,28 @@ Created object will immediately start advertising and browsing for peers.
 
   Stop advertising for new connections, e.g. when you have all the players and start a game, and do not want new players joining in the middle. 
 
-#### `send(self, message, to_peer=None)`
+#### `send(self, message, to_peer=None, reliable=True)`
 
   Send a message to some or all peers.
   
   * `message` - to be sent to the peer(s). Must be JSON-serializable.
   * `to_peer` - receiver peer IDs. Can be a single peer ID, a list of peer IDs, or left out (None) for sending to all connected peers.
+  * `reliable` - indicates whether delivery of data should be guaranteed (enqueueing and retransmitting data as needed, and ensuring in-order delivery). Default is True, but can be set to False for performance reasons.
+
+#### `stream(self, byte_data, to_peer=None)`
+
+  Stream message string to some or all peers. Stream per receiver will be set up on first call. See constructor parameters for the option to have streams per peer initialized on connection.
+  
+  * `byte_data` - data to be sent to the peer(s). If you are sending a string, call its `encode()` method and pass the result to this method.
+  * `to_peer` - receiver peer IDs. Can be a single peer ID, a list of peer IDs, or left out (None) for sending to all connected peers.
 
 #### `receive(self, message, from_peer)`
 
   Override in a subclass to handle incoming messages. 
+
+#### `stream_receive(self, byte_data, from_peer)`
+
+  Override in a subclass to handle incoming streamed data. `byte_data` is a `bytearray`; call its `decode()` method if you expect a string.
 
 #### `disconnect(self)`
 
@@ -133,3 +156,9 @@ Created object will immediately start advertising and browsing for peers.
 
   Disconnects from the multipeer session and removes internal references.
   Further communications will require instantiating a new MultipeerCommunications (sub)class. 
+# Functions
+
+
+#### `get_self(manager_object)`
+
+  Expects a 'manager object', i.e. one of session, advertiser or browser, and uses the contained peer ID to locate the right Python manager object. 

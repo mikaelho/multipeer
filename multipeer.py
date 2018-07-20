@@ -24,7 +24,7 @@ Here's a minimal usage example, a line-based chat. You need to be running the sa
     finally:
       mc.end_all()
 
-It is functional, even though the prompts and incoming messages tend to get mixed up. You can try it out by running the `multipeer.py` file. There is also a cleaner Pythonista UI version of the chat in `multipeer_chat`.
+This example is functional, even though the prompts and incoming messages tend to get mixed up. You can try it out by running the `multipeer.py` file. There is also a cleaner Pythonista UI version of the chat in `multipeer_chat`.
 
 Here are the things to note when starting to use this library:
   
@@ -62,6 +62,7 @@ This wrapper chooses to handle callbacks via subclassing rather than requiring a
 * `peer_added`
 * `peer_removed`
 * `receive`
+* `stream_receive`
 
 The versions of these methods in the `MultipeerConnectivity` class just print out the information received.
 
@@ -75,23 +76,29 @@ Note that if these method update the UI, you should decorate them with `objc_uti
 * Following defaults are used and are not currently configurable without resorting to ObjC:
   * Secure - Encryption is required on all connections.
   * Not secure - A specific security identity cannot be set.
-  * Reliable - When sending data to other peers, framework tries to guarantee delivery of each message, enqueueing and retransmitting data as needed, and ensuring in-order delivery.
 '''
 
 from objc_util import *
-import ctypes, re, json
+import ctypes, re, json, heapq
 
 # MC framework classes
 NSBundle.bundle(Path="/System/Library/Frameworks/MultipeerConnectivity.framework").load()
-MCPeerID=ObjCClass('MCPeerID')
-MCSession=ObjCClass('MCSession')
-MCNearbyServiceAdvertiser=ObjCClass('MCNearbyServiceAdvertiser')
-MCNearbyServiceBrowser=ObjCClass('MCNearbyServiceBrowser')
+MCPeerID = ObjCClass('MCPeerID')
+MCSession = ObjCClass('MCSession')
+MCNearbyServiceAdvertiser = ObjCClass('MCNearbyServiceAdvertiser')
+MCNearbyServiceBrowser = ObjCClass('MCNearbyServiceBrowser')
+NSRunLoop = ObjCClass('NSRunLoop')
+NSDefaultRunLoopMode = ObjCInstance(c_void_p.in_dll(c, "NSDefaultRunLoopMode"))
 
 # Global variable and a helper function for accessing Python manager object from ObjC functions.
 # Dictionary is used to support running more than one MC object simultaneously.
 
 mc_managers = {}
+mc_inputstream_managers = {}
+
+def log_this(msg):
+  with open('main_log.txt', 'a') as f:
+    f.write(msg + '\n')
 
 def get_self(manager_object):
   ''' Expects a 'manager object', i.e. one of session, advertiser or browser, and uses the contained peer ID to locate the right Python manager object. '''
@@ -105,7 +112,6 @@ def session_peer_didChangeState_(_self,_cmd,_session,_peerID,_state):
   if self is None: return
   peerID = ObjCInstance(_peerID)
   peerID.display_name = str(peerID.displayName())
-  #print('session change',peerID,_state)
   if _state == 2:
     self._peer_collector(peerID)
   if _state is None:
@@ -114,22 +120,52 @@ def session_peer_didChangeState_(_self,_cmd,_session,_peerID,_state):
 def session_didReceiveData_fromPeer_(_self,_cmd,_session,_data,_peerID):
   self = get_self(_session)
   if self is None: return
-  peerID = ObjCInstance(_peerID)
-  peerID.display_name = str(peerID.displayName())
+  peer_id = ObjCInstance(_peerID)
+  peer_id.display_name = str(peer_id.displayName())
   decoded_data = nsdata_to_bytes(ObjCInstance(_data)).decode()
-  #print('Received data:',decoded_data)
   message = json.loads(decoded_data)
-  self.receive(message, peerID)
+  self.receive(message, peer_id)
 
 def session_didReceiveStream_withName_fromPeer_(_self,_cmd,_session,_stream,_streamName,_peerID):
-  print('Received stream', _streamName, 'but streams are not currently supported by this API')
+  self = get_self(_session)
+  if self is None: return
+  stream = ObjCInstance(_stream)
+  peer_id = ObjCInstance(_peerID)
+  stream.setDelegate_(ObjCInstance(_self))
+  mc_inputstream_managers[stream] = self
+  self.peer_per_inputstream[stream] = peer_id
+  stream.scheduleInRunLoop_forMode_(NSRunLoop.mainRunLoop(), NSDefaultRunLoopMode)
+  stream.open()
+
+
+def stream_handleEvent_(_self, _cmd, _stream, _event):
+  if _event == 2: # hasBytesAvailable
+    buffer = ctypes.create_string_buffer(1024)
+    with open('l','w') as f: f.write('a\n')
+    stream = ObjCInstance(_stream)
+    read_len = stream.read_maxLength_(buffer, 1024)
+    with open('l','a') as f: f.write('b\n')
+    if read_len > 0:
+      content = bytearray(buffer[:read_len])
+      with open('l','a') as f: f.write('c\n')
+      self = mc_inputstream_managers[stream]
+      with open('l','a') as f: f.write('d\n')
+      if self is None: 
+        print('no self')
+        return
+      peer_id = self.peer_per_inputstream[stream]
+      self.stream_receive(content, peer_id)
+
+  #self = get_self(_advertiser)
+  #if self is None: return
+  #TODO: find right peer
 
 #try:
 #  SessionDelegate = ObjCClass('SessionDelegate')
 #  SDelegate = SessionDelegate.alloc().init()
 #except:
 
-SessionDelegate = create_objc_class('SessionDelegate',methods=[session_peer_didChangeState_, session_didReceiveData_fromPeer_, session_didReceiveStream_withName_fromPeer_],protocols=['MCSessionDelegate'])
+SessionDelegate = create_objc_class('SessionDelegate',methods=[session_peer_didChangeState_, session_didReceiveData_fromPeer_, session_didReceiveStream_withName_fromPeer_, stream_handleEvent_],protocols=['MCSessionDelegate', 'NSStreamDelegate'])
 SDelegate = SessionDelegate.alloc().init()
 
 def browser_didNotStartBrowsingForPeers_(_self,_cmd,_browser,_err):
@@ -169,9 +205,9 @@ def advertiser_didReceiveInvitationFromPeer_withContext_invitationHandler_(_self
   peer_id = ObjCInstance(_peerID)
   if _context is not None:
     decoded_data = nsdata_to_bytes(ObjCInstance(_context)).decode()
-    #print('Received data:',decoded_data)
     initial_data = json.loads(decoded_data)
     self.initial_peer_data[peer_id.hash()] = initial_data
+  peer_id.display_name = str(peer_id.displayName())
   self._peer_collector(peer_id)
   invitation_handler = ObjCInstance(_invitationHandler)
   retain_global(invitation_handler)
@@ -190,9 +226,9 @@ f.encoding = b'v@:@@@@?'
 AdvertiserDelegate = create_objc_class('AdvertiserDelegate',methods=[advertiser_didReceiveInvitationFromPeer_withContext_invitationHandler_])
 ADelegate = AdvertiserDelegate.alloc().init()
 
-
-# Wrapper class
-
+  
+  # Wrapper class
+  
 class MultipeerConnectivity():
   ''' Multipeer communications. Subclass this class to define how you want to react to added or removed peers, and to process incoming messages from peers.
   
@@ -205,11 +241,12 @@ class MultipeerConnectivity():
   * `display_name` - This peer's display name (e.g. a player name). Must not be None or an empty string, and must be at most 63 bytes long (UTF-8 encoded).
   * `service_type` - String that must match with that of the peers in order for a connection to be established. Must be 1-15 characters in length and contain only a-z, 0-9, or '-'.
   * `initial_data` - Any JSON-serializable data that can be requested by peers with a call to `get_initial_data()`.
+  * `initialize_streams` - If True, a stream is set up to any peer that connects.
   
   Created object will immediately start advertising and browsing for peers.
   '''
 
-  def __init__(self, display_name='Peer', service_type='dev-srv', initial_data=None):
+  def __init__(self, display_name='Peer', service_type='dev-srv', initial_data=None, initialize_streams=False):
     global mc_managers
 
     if display_name is None or display_name == '' or len(display_name.encode()) > 63:
@@ -229,6 +266,10 @@ class MultipeerConnectivity():
     self._peer_connection_hit_count = {}
 
     mc_managers[self.my_id.hash()] = self
+    
+    self.initialize_streams = initialize_streams
+    self.outputstream_per_peer = {}
+    self.peer_per_inputstream = {}
 
     self.session = MCSession.alloc().initWithPeer_(self.my_id)
     self.session.setDelegate_(SDelegate)
@@ -279,7 +320,7 @@ class MultipeerConnectivity():
 
     * `message` - to be sent to the peer(s). Must be JSON-serializable.
     * `to_peer` - receiver peer IDs. Can be a single peer ID, a list of peer IDs, or left out (None) for sending to all connected peers.
-    * `reliable` - MCSessionSendDataMode. Can be True or False, or left out (True). Indicates whether delivery of data should be guaranteed.
+    * `reliable` - indicates whether delivery of data should be guaranteed (enqueueing and retransmitting data as needed, and ensuring in-order delivery). Default is True, but can be set to False for performance reasons.
     '''
     if type(to_peer) == list:
       peers = to_peer
@@ -287,11 +328,59 @@ class MultipeerConnectivity():
       peers = self.get_peers()
     else:
       peers = [to_peer]
-    self.session.sendData_toPeers_withMode_error_(json.dumps(message).encode(), peers,  0 if reliable else 1, None)
+      
+    message = json.dumps(message)
+    message = message.encode()
+    
+    send_mode = 0 if reliable else 1
+    self.session.sendData_toPeers_withMode_error_(message, peers, send_mode, None)
+
+  def stream(self, byte_data, to_peer=None):
+    ''' Stream message string to some or all peers. Stream per receiver will be set up on first call. See constructor parameters for the option to have streams per peer initialized on connection.
+    
+    * `byte_data` - data to be sent to the peer(s). If you are sending a string, call its `encode()` method and pass the result to this method.
+    * `to_peer` - receiver peer IDs. Can be a single peer ID, a list of peer IDs, or left out (None) for sending to all connected peers.
+    '''
+    log_this('in stream()')
+    if type(to_peer) == list:
+      peers = to_peer
+    elif to_peer is None:
+      peers = self.get_peers()
+    else:
+      peers = [to_peer]
+    for peer_id in peers:
+      log_this('peer')
+      peer_id = ObjCInstance(peer_id)
+      log_this('stream')
+      stream = self.outputstream_per_peer.get(peer_id.hash(), None)
+      if stream is None:
+        log_this('no strean')
+        stream = self._set_up_stream(peer_id)
+      log_this('yes stream: ' + str(stream))
+      data_len = len(byte_data)
+      log_this('writing')
+      log_this(str(byte_data))
+      wrote_len = stream.write_maxLength_(byte_data, data_len)
+      log_this('success')
+      if wrote_len != data_len:
+        print(f'Error writing data, wrote {wrote_len}/{data_len} bytes')
+    
+  def _set_up_stream(self, to_peer):
+    output_stream = ObjCInstance(self.session.startStreamWithName_toPeer_error_('stream', to_peer, None))
+    output_stream.setDelegate_(SDelegate)
+    output_stream.scheduleInRunLoop_forMode_(NSRunLoop.mainRunLoop(), NSDefaultRunLoopMode)
+    
+    output_stream.open()
+    self.outputstream_per_peer[to_peer.hash()] = output_stream
+    return output_stream
 
   def receive(self, message, from_peer):
     ''' Override in a subclass to handle incoming messages. '''
     print('Message from', from_peer.display_name, '-' , message)
+    
+  def stream_receive(self, byte_data, from_peer):
+    ''' Override in a subclass to handle incoming streamed data. `byte_data` is a `bytearray`; call its `decode()` method if you expect a string.'''
+    print('Message from', from_peer.display_name, '-' , byte_data.decode())
 
   def disconnect(self):
     ''' End your games or similar sessions by calling this method. '''
@@ -309,21 +398,24 @@ class MultipeerConnectivity():
     del mc_managers[self.my_id.hash()]
     
   def _peer_collector(self, peer_id):
-    ''' Makes sure that `peer_added` is only called after the full "two-way handshake" is complete and the initial context info has been captured. '''
-    self._peer_connection_hit_count.setdefault(peer_id.hash(), 0)
-    self._peer_connection_hit_count[peer_id.hash()] += 1
-    if self._peer_connection_hit_count[peer_id.hash()] > 1:
+    ''' Makes sure that `peer_added` is only called after the full "two-way handshake" is complete and the initial context info has been captured. Also sets up a stream to peer if requested by the constructor argument. '''
+    peer_hash = peer_id.hash()
+    self._peer_connection_hit_count.setdefault(peer_hash, 0)
+    self._peer_connection_hit_count[peer_hash] += 1
+    if self._peer_connection_hit_count[peer_hash] > 1:
+      if self.initialize_streams and peer_hash not in self.outputstream_per_peer:
+        self._set_up_stream(peer_id)
       self.peer_added(peer_id)
       
     
 
 if __name__ == '__main__':
 
-    import multipeer, platform
+    import platform
 
     my_name = input('Name: ')
     
-    mc = multipeer.MultipeerConnectivity(display_name=my_name, service_type='chat', initial_data=platform.platform())
+    mc = MultipeerConnectivity(display_name=my_name, service_type='chat', initial_data=platform.platform())
     
     try:
       while True:
