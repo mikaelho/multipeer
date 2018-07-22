@@ -44,6 +44,23 @@ This wrapper around the MC framework makes no assumptions regarding the relation
 
 Messages passed between peers are UTF-8 encoded text. This wrapper JSON-serializes the message you give to the `send` method (probably a str or a dict), then encodes it in bytes. Receiving peers reconstitute the message and pass it to the `receive` callback.
 
+## Streaming
+
+There are methods to use streaming instead of simple messages. Streamed data is received in 1024 byte chunks. There is a constructor option `initialize_streams` that can be used to set up a stream with each connected peer; otherwise, the streams are initialized when needed.
+
+## Performance
+
+Pythonista forum user `mithrendal` ran some ping tests with very small data payload and 1000 repeats. Observed average times for a two-way messages were:
+  
+* 11.85 ms - `send` method with `reliable=False`
+* 11.94 ms - `send` method with `reliable=True` (the default)
+* 6.19 ms - `stream` method
+
+Tentative conclusions from these results:
+  
+* Connections are likely to be good enough that reliable messaging is not a performance concern.
+* Streaming may be significantly better if communications delay is an issue.
+
 ## What is a peer ID?
 
 Peer IDs passed around by the wrapper have a `display_name` member that gives you the display name of that peer. There is no guarantee that these names are unique between peers.

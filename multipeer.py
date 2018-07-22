@@ -47,6 +47,23 @@ This wrapper around the MC framework makes no assumptions regarding the relation
 
 Messages passed between peers are UTF-8 encoded text. This wrapper JSON-serializes the message you give to the `send` method (probably a str or a dict), then encodes it in bytes. Receiving peers reconstitute the message and pass it to the `receive` callback.
 
+## Streaming
+
+There are methods to use streaming instead of simple messages. Streamed data is received in 1024 byte chunks. There is a constructor option `initialize_streams` that can be used to set up a stream with each connected peer; otherwise, the streams are initialized when needed.
+
+## Performance
+
+Pythonista forum user `mithrendal` ran some ping tests with very small data payload and 1000 repeats. Observed average times for a two-way messages were:
+  
+* 11.85 ms - `send` method with `reliable=False`
+* 11.94 ms - `send` method with `reliable=True` (the default)
+* 6.19 ms - `stream` method
+
+Tentative conclusions from these results:
+  
+* Connections are likely to be good enough that reliable messaging is not a performance concern.
+* Streaming may be significantly better if communications delay is an issue.
+
 ## What is a peer ID?
 
 Peer IDs passed around by the wrapper have a `display_name` member that gives you the display name of that peer. There is no guarantee that these names are unique between peers.
@@ -96,10 +113,6 @@ NSDefaultRunLoopMode = ObjCInstance(c_void_p.in_dll(c, "NSDefaultRunLoopMode"))
 mc_managers = {}
 mc_inputstream_managers = {}
 
-def log_this(msg):
-  with open('main_log.txt', 'a') as f:
-    f.write(msg + '\n')
-
 def get_self(manager_object):
   ''' Expects a 'manager object', i.e. one of session, advertiser or browser, and uses the contained peer ID to locate the right Python manager object. '''
   global mc_managers
@@ -141,29 +154,13 @@ def session_didReceiveStream_withName_fromPeer_(_self,_cmd,_session,_stream,_str
 def stream_handleEvent_(_self, _cmd, _stream, _event):
   if _event == 2: # hasBytesAvailable
     buffer = ctypes.create_string_buffer(1024)
-    with open('l','w') as f: f.write('a\n')
     stream = ObjCInstance(_stream)
     read_len = stream.read_maxLength_(buffer, 1024)
-    with open('l','a') as f: f.write('b\n')
     if read_len > 0:
       content = bytearray(buffer[:read_len])
-      with open('l','a') as f: f.write('c\n')
       self = mc_inputstream_managers[stream]
-      with open('l','a') as f: f.write('d\n')
-      if self is None: 
-        print('no self')
-        return
       peer_id = self.peer_per_inputstream[stream]
       self.stream_receive(content, peer_id)
-
-  #self = get_self(_advertiser)
-  #if self is None: return
-  #TODO: find right peer
-
-#try:
-#  SessionDelegate = ObjCClass('SessionDelegate')
-#  SDelegate = SessionDelegate.alloc().init()
-#except:
 
 SessionDelegate = create_objc_class('SessionDelegate',methods=[session_peer_didChangeState_, session_didReceiveData_fromPeer_, session_didReceiveStream_withName_fromPeer_, stream_handleEvent_],protocols=['MCSessionDelegate', 'NSStreamDelegate'])
 SDelegate = SessionDelegate.alloc().init()
@@ -183,11 +180,6 @@ def browser_foundPeer_withDiscoveryInfo_(_self, _cmd, _browser, _peerID, _info):
 def browser_lostPeer_(_self, _cmd, browser, peer):
   #print ('lost peer')
   pass
-
-#try:
-#  BrowserDelegate = ObjCClass('BrowserDelegate')
-#  Bdelegate = BrowserDelegate.alloc().init()
-#except:
 
 BrowserDelegate = create_objc_class('BrowserDelegate',methods=[browser_foundPeer_withDiscoveryInfo_, browser_lostPeer_, browser_didNotStartBrowsingForPeers_],protocols=['MCNearbyServiceBrowserDelegate'])
 Bdelegate = BrowserDelegate.alloc().init()
@@ -213,11 +205,6 @@ def advertiser_didReceiveInvitationFromPeer_withContext_invitationHandler_(_self
   retain_global(invitation_handler)
   blk = _block_literal.from_address(_invitationHandler)
   blk.invoke(invitation_handler, True, self.session)
-
-#try:
-#  AdvertiserDelegate = ObjCClass('AdvertiserDelegate')
-#  ADelegate = AdvertiserDelegate.alloc().init()
-#except:
 
 f = advertiser_didReceiveInvitationFromPeer_withContext_invitationHandler_
 f.argtypes = [c_void_p]*4
@@ -341,7 +328,6 @@ class MultipeerConnectivity():
     * `byte_data` - data to be sent to the peer(s). If you are sending a string, call its `encode()` method and pass the result to this method.
     * `to_peer` - receiver peer IDs. Can be a single peer ID, a list of peer IDs, or left out (None) for sending to all connected peers.
     '''
-    log_this('in stream()')
     if type(to_peer) == list:
       peers = to_peer
     elif to_peer is None:
@@ -349,19 +335,12 @@ class MultipeerConnectivity():
     else:
       peers = [to_peer]
     for peer_id in peers:
-      log_this('peer')
       peer_id = ObjCInstance(peer_id)
-      log_this('stream')
       stream = self.outputstream_per_peer.get(peer_id.hash(), None)
       if stream is None:
-        log_this('no strean')
         stream = self._set_up_stream(peer_id)
-      log_this('yes stream: ' + str(stream))
       data_len = len(byte_data)
-      log_this('writing')
-      log_this(str(byte_data))
       wrote_len = stream.write_maxLength_(byte_data, data_len)
-      log_this('success')
       if wrote_len != data_len:
         print(f'Error writing data, wrote {wrote_len}/{data_len} bytes')
     
@@ -392,9 +371,6 @@ class MultipeerConnectivity():
     self.stop_looking_for_peers()
     self.disconnect()
 
-    #self.advertiser.setDelegate_(None)
-    #self.browser.setDelegate_(None)
-    #self.session.setDelegate_(None)
     del mc_managers[self.my_id.hash()]
     
   def _peer_collector(self, peer_id):
@@ -411,15 +387,17 @@ class MultipeerConnectivity():
 
 if __name__ == '__main__':
 
-    import platform
+  # Simple chat peer to demonstrate basic functionality
 
-    my_name = input('Name: ')
-    
-    mc = MultipeerConnectivity(display_name=my_name, service_type='chat', initial_data=platform.platform())
-    
-    try:
-      while True:
-        chat_message = input('Message: ')
-        mc.send(chat_message)
-    finally:
-      mc.end_all()
+  import platform
+
+  my_name = input('Name: ')
+  
+  mc = MultipeerConnectivity(display_name=my_name, service_type='chat', initial_data=platform.platform())
+  
+  try:
+    while True:
+      chat_message = input('Message: ')
+      mc.send(chat_message)
+  finally:
+    mc.end_all()

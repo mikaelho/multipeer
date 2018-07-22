@@ -10,10 +10,6 @@ from scripter import *
 import multipeer
 
 
-def log_this(msg):
-  with open('log.txt', 'a') as f:
-    f.write(msg + '\n')
-
 class Grid(View):
   
   size = 300 # multiple of 3
@@ -602,5 +598,4 @@ if __name__ == '__main__':
   v.background_color = 'black'
   v.present(hide_title_bar=True)
   v.show_menu()
-
 
