@@ -24,13 +24,13 @@
         "frame" : "{{67, 6}, {85, 32}}",
         "class" : "Label",
         "attributes" : {
-          "name" : "label1",
+          "font_size" : 18,
           "frame" : "{{85, 103}, {150, 32}}",
           "uuid" : "03A16AFF-6DF3-4B89-9CB8-6AFAABFBAFF0",
           "class" : "Label",
           "alignment" : "left",
           "text" : "connect",
-          "font_size" : 18,
+          "name" : "label1",
           "font_name" : "<System>"
         },
         "selected" : false
@@ -41,7 +41,7 @@
             "nodes" : [
 
             ],
-            "frame" : "{{0, 0}, {288, 396}}",
+            "frame" : "{{0, 0}, {288, 357}}",
             "class" : "TextView",
             "attributes" : {
               "flex" : "WH",
@@ -53,13 +53,13 @@
               "uuid" : "08E1D9AE-C2A5-4BDA-A6BC-C78098037836",
               "alignment" : "left",
               "autocorrection_type" : "default",
-              "name" : "textview",
-              "font_size" : 17
+              "font_size" : 17,
+              "name" : "textview"
             },
             "selected" : true
           }
         ],
-        "frame" : "{{8, 123}, {288, 137}}",
+        "frame" : "{{8, 162}, {288, 98}}",
         "class" : "ScrollView",
         "attributes" : {
           "flex" : "HR",
@@ -78,11 +78,11 @@
             "nodes" : [
 
             ],
-            "frame" : "{{6, 0}, {314, 409}}",
+            "frame" : "{{6, 0}, {314, 364}}",
             "class" : "TextView",
             "attributes" : {
               "flex" : "WH",
-              "font_size" : 17,
+              "name" : "textview",
               "editable" : true,
               "frame" : "{{60, 60}, {200, 200}}",
               "spellchecking_type" : "default",
@@ -90,13 +90,13 @@
               "uuid" : "EE06C456-E77B-4E1D-B67B-B3695052B634",
               "alignment" : "left",
               "autocorrection_type" : "default",
-              "name" : "textview",
+              "font_size" : 17,
               "font_name" : "<System>"
             },
             "selected" : true
           }
         ],
-        "frame" : "{{332, 123}, {320, 149}}",
+        "frame" : "{{332, 162}, {320, 104}}",
         "class" : "ScrollView",
         "attributes" : {
           "flex" : "HL",
@@ -116,13 +116,13 @@
         "frame" : "{{170, 6}, {154, 32}}",
         "class" : "Label",
         "attributes" : {
-          "font_size" : 18,
+          "name" : "labelConnections",
           "frame" : "{{325, 117}, {150, 32}}",
           "uuid" : "1FEFF6C5-F2C9-4880-832F-3C8495BC3F55",
           "class" : "Label",
           "alignment" : "left",
           "text" : "connections: 0",
-          "name" : "labelConnections",
+          "font_size" : 18,
           "font_name" : "<System>"
         },
         "selected" : false
@@ -131,7 +131,7 @@
         "nodes" : [
 
         ],
-        "frame" : "{{339, 5}, {103, 32}}",
+        "frame" : "{{8, 96}, {103, 32}}",
         "class" : "Button",
         "attributes" : {
           "action" : "self.btn_ping",
@@ -152,7 +152,7 @@
         "nodes" : [
 
         ],
-        "frame" : "{{456, 6}, {196, 31}}",
+        "frame" : "{{128, 97}, {290, 31}}",
         "class" : "Label",
         "attributes" : {
           "font_name" : "<System>",
@@ -161,8 +161,8 @@
           "class" : "Label",
           "alignment" : "left",
           "text" : "",
-          "font_size" : 18,
-          "name" : "echoTime"
+          "name" : "echoTime",
+          "font_size" : 18
         },
         "selected" : false
       },
@@ -170,7 +170,7 @@
         "nodes" : [
 
         ],
-        "frame" : "{{332, 47}, {51, 31}}",
+        "frame" : "{{233, 43}, {51, 31}}",
         "class" : "Switch",
         "attributes" : {
           "uuid" : "44412CD8-7CE3-4C6C-900E-2CF278600F90",
@@ -186,7 +186,7 @@
         "nodes" : [
 
         ],
-        "frame" : "{{391, 45}, {194, 32}}",
+        "frame" : "{{292, 44}, {194, 30}}",
         "class" : "Label",
         "attributes" : {
           "font_name" : "<System>",
@@ -194,9 +194,9 @@
           "uuid" : "6C3A6F82-EA35-4FEE-873E-5E34FBDE5D72",
           "class" : "Label",
           "alignment" : "left",
-          "text" : "send reliable but slow",
-          "name" : "label3",
-          "font_size" : 18
+          "text" : "reliable send mode",
+          "font_size" : 18,
+          "name" : "label3"
         },
         "selected" : false
       },
@@ -209,7 +209,7 @@
         "attributes" : {
           "action" : "self.setUseStreams",
           "frame" : "{{375, 118}, {51, 31}}",
-          "value" : true,
+          "value" : false,
           "class" : "Switch",
           "name" : "useStreams",
           "uuid" : "FF80A6D8-662C-47A8-AC21-9FF61A64D0C4"
@@ -223,13 +223,13 @@
         "frame" : "{{75, 43}, {150, 32}}",
         "class" : "Label",
         "attributes" : {
-          "name" : "label4",
+          "font_size" : 18,
           "frame" : "{{325, 117}, {150, 32}}",
           "uuid" : "8DA3CF3E-29F1-45B9-8823-1A6A981773F4",
           "class" : "Label",
           "alignment" : "left",
           "text" : "use streams",
-          "font_size" : 18,
+          "name" : "label4",
           "font_name" : "<System>"
         },
         "selected" : false
@@ -238,7 +238,7 @@
         "nodes" : [
 
         ],
-        "frame" : "{{8, 90}, {80, 32}}",
+        "frame" : "{{308, 0}, {80, 48}}",
         "class" : "Button",
         "attributes" : {
           "action" : "self.willClose",
@@ -246,6 +246,7 @@
           "title" : "close",
           "uuid" : "8CF59D9F-3A20-4089-A2F7-5BEA16AE49A7",
           "class" : "Button",
+          "background_color" : "RGBA(0.260870,1.000000,0.507246,1.000000)",
           "name" : "buttonClose",
           "font_size" : 15
         },
@@ -257,10 +258,10 @@
     "attributes" : {
       "flex" : "",
       "enabled" : true,
+      "border_color" : "RGBA(0.000000,0.000000,0.000000,1.000000)",
       "background_color" : "RGBA(1.000000,1.000000,1.000000,1.000000)",
       "name" : "",
-      "tint_color" : "RGBA(0.000000,0.478000,1.000000,1.000000)",
-      "border_color" : "RGBA(0.000000,0.000000,0.000000,1.000000)"
+      "tint_color" : "RGBA(0.000000,0.478000,1.000000,1.000000)"
     },
     "selected" : false
   }

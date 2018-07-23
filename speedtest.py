@@ -129,7 +129,7 @@ class Multiplayer:
 	
 	@ui.in_background
 	def setUseStreams(self,sender):
-		self.view['switchReliable'].enabled=sender.value
+		self.view['switchReliable'].enabled=not sender.value
 		
 	@ui.in_background
 	def enableout(self,sender):
