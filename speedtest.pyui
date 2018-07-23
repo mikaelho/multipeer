@@ -1,0 +1,282 @@
+[
+  {
+    "nodes" : [
+      {
+        "nodes" : [
+
+        ],
+        "frame" : "{{8, 6}, {51, 31}}",
+        "class" : "Switch",
+        "attributes" : {
+          "action" : "self.enableout",
+          "frame" : "{{135, 103}, {51, 31}}",
+          "value" : false,
+          "class" : "Switch",
+          "name" : "connect",
+          "uuid" : "B46EC4AB-A7F0-4710-9244-8B3946EC6CC7"
+        },
+        "selected" : false
+      },
+      {
+        "nodes" : [
+
+        ],
+        "frame" : "{{67, 6}, {85, 32}}",
+        "class" : "Label",
+        "attributes" : {
+          "name" : "label1",
+          "frame" : "{{85, 103}, {150, 32}}",
+          "uuid" : "03A16AFF-6DF3-4B89-9CB8-6AFAABFBAFF0",
+          "class" : "Label",
+          "alignment" : "left",
+          "text" : "connect",
+          "font_size" : 18,
+          "font_name" : "<System>"
+        },
+        "selected" : false
+      },
+      {
+        "nodes" : [
+
+        ],
+        "frame" : "{{332, 6}, {51, 31}}",
+        "class" : "Switch",
+        "attributes" : {
+          "frame" : "{{135, 103}, {51, 31}}",
+          "value" : true,
+          "class" : "Switch",
+          "name" : "sendout",
+          "uuid" : "4C1857A4-EEF8-4E9B-8F20-D1D1C070EA93"
+        },
+        "selected" : false
+      },
+      {
+        "nodes" : [
+
+        ],
+        "frame" : "{{391, 6}, {208, 32}}",
+        "class" : "Label",
+        "attributes" : {
+          "name" : "label2",
+          "frame" : "{{85, 103}, {150, 32}}",
+          "uuid" : "B33D0004-D845-4D0B-953D-531228F29DDB",
+          "class" : "Label",
+          "alignment" : "left",
+          "text" : "send out",
+          "font_size" : 18,
+          "font_name" : "<System>"
+        },
+        "selected" : false
+      },
+      {
+        "nodes" : [
+          {
+            "nodes" : [
+
+            ],
+            "frame" : "{{0, 0}, {288, 436}}",
+            "class" : "TextView",
+            "attributes" : {
+              "flex" : "WH",
+              "font_name" : "<System>",
+              "editable" : true,
+              "frame" : "{{60, 60}, {200, 200}}",
+              "spellchecking_type" : "default",
+              "class" : "TextView",
+              "uuid" : "08E1D9AE-C2A5-4BDA-A6BC-C78098037836",
+              "alignment" : "left",
+              "autocorrection_type" : "default",
+              "name" : "textview",
+              "font_size" : 17
+            },
+            "selected" : true
+          }
+        ],
+        "frame" : "{{8, 83}, {288, 177}}",
+        "class" : "ScrollView",
+        "attributes" : {
+          "flex" : "HR",
+          "frame" : "{{0, -42}, {320, 320}}",
+          "uuid" : "9085E1DB-37CF-45B6-8EB1-FCF7D68CC684",
+          "content_height" : 320,
+          "class" : "ScrollView",
+          "content_width" : 320,
+          "name" : "outview"
+        },
+        "selected" : false
+      },
+      {
+        "nodes" : [
+          {
+            "nodes" : [
+
+            ],
+            "frame" : "{{6, 0}, {314, 446}}",
+            "class" : "TextView",
+            "attributes" : {
+              "flex" : "WH",
+              "font_size" : 17,
+              "editable" : true,
+              "frame" : "{{60, 60}, {200, 200}}",
+              "spellchecking_type" : "default",
+              "class" : "TextView",
+              "uuid" : "EE06C456-E77B-4E1D-B67B-B3695052B634",
+              "alignment" : "left",
+              "autocorrection_type" : "default",
+              "name" : "textview",
+              "font_name" : "<System>"
+            },
+            "selected" : true
+          }
+        ],
+        "frame" : "{{332, 86}, {320, 186}}",
+        "class" : "ScrollView",
+        "attributes" : {
+          "flex" : "HL",
+          "frame" : "{{0, -42}, {320, 320}}",
+          "uuid" : "2D639F2E-ACCB-474D-B2C0-FB4A808E29ED",
+          "content_height" : 320,
+          "class" : "ScrollView",
+          "content_width" : 320,
+          "name" : "inview"
+        },
+        "selected" : false
+      },
+      {
+        "nodes" : [
+
+        ],
+        "frame" : "{{170, 6}, {154, 32}}",
+        "class" : "Label",
+        "attributes" : {
+          "font_size" : 18,
+          "frame" : "{{325, 117}, {150, 32}}",
+          "uuid" : "1FEFF6C5-F2C9-4880-832F-3C8495BC3F55",
+          "class" : "Label",
+          "alignment" : "left",
+          "text" : "connections: 0",
+          "name" : "labelConnections",
+          "font_name" : "<System>"
+        },
+        "selected" : false
+      },
+      {
+        "nodes" : [
+
+        ],
+        "frame" : "{{469, 6}, {80, 32}}",
+        "class" : "Button",
+        "attributes" : {
+          "action" : "self.btn_ping",
+          "border_width" : 1,
+          "frame" : "{{360, 117}, {80, 32}}",
+          "title" : "ping",
+          "uuid" : "24B516BD-FF66-45AF-BE81-9F34F87F88AB",
+          "font_bold" : false,
+          "class" : "Button",
+          "corner_radius" : 10,
+          "border_color" : "RGBA(0.333333,0.556863,1.000000,1.000000)",
+          "name" : "btn_ping",
+          "font_size" : 15
+        },
+        "selected" : false
+      },
+      {
+        "nodes" : [
+
+        ],
+        "frame" : "{{547, 6}, {105, 31}}",
+        "class" : "Label",
+        "attributes" : {
+          "font_name" : "<System>",
+          "frame" : "{{325, 117}, {150, 32}}",
+          "uuid" : "C6545828-4B5C-4DCC-B85E-DDABF1AA8C7C",
+          "class" : "Label",
+          "alignment" : "left",
+          "text" : "",
+          "font_size" : 18,
+          "name" : "echoTime"
+        },
+        "selected" : false
+      },
+      {
+        "nodes" : [
+
+        ],
+        "frame" : "{{332, 47}, {51, 31}}",
+        "class" : "Switch",
+        "attributes" : {
+          "uuid" : "44412CD8-7CE3-4C6C-900E-2CF278600F90",
+          "frame" : "{{375, 118}, {51, 31}}",
+          "value" : true,
+          "class" : "Switch",
+          "name" : "switchReliable",
+          "action" : "self.setReliable"
+        },
+        "selected" : false
+      },
+      {
+        "nodes" : [
+
+        ],
+        "frame" : "{{391, 45}, {194, 32}}",
+        "class" : "Label",
+        "attributes" : {
+          "font_name" : "<System>",
+          "frame" : "{{325, 117}, {150, 32}}",
+          "uuid" : "6C3A6F82-EA35-4FEE-873E-5E34FBDE5D72",
+          "class" : "Label",
+          "alignment" : "left",
+          "text" : "send reliable but slow",
+          "name" : "label3",
+          "font_size" : 18
+        },
+        "selected" : false
+      },
+      {
+        "nodes" : [
+
+        ],
+        "frame" : "{{8, 44}, {51, 31}}",
+        "class" : "Switch",
+        "attributes" : {
+          "frame" : "{{375, 118}, {51, 31}}",
+          "value" : true,
+          "class" : "Switch",
+          "name" : "useStreams",
+          "uuid" : "FF80A6D8-662C-47A8-AC21-9FF61A64D0C4"
+        },
+        "selected" : false
+      },
+      {
+        "nodes" : [
+
+        ],
+        "frame" : "{{75, 43}, {150, 32}}",
+        "class" : "Label",
+        "attributes" : {
+          "name" : "label4",
+          "frame" : "{{325, 117}, {150, 32}}",
+          "uuid" : "8DA3CF3E-29F1-45B9-8823-1A6A981773F4",
+          "class" : "Label",
+          "alignment" : "left",
+          "text" : "use streams",
+          "font_size" : 18,
+          "font_name" : "<System>"
+        },
+        "selected" : true
+      }
+    ],
+    "frame" : "{{0, 0}, {800, 266}}",
+    "class" : "View",
+    "attributes" : {
+      "flex" : "",
+      "enabled" : true,
+      "tint_color" : "RGBA(0.000000,0.478000,1.000000,1.000000)",
+      "border_color" : "RGBA(0.000000,0.000000,0.000000,1.000000)",
+      "name" : "",
+      "background_color" : "RGBA(1.000000,1.000000,1.000000,1.000000)"
+    },
+    "selected" : false
+  }
+]
