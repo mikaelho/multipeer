@@ -37,44 +37,11 @@
       },
       {
         "nodes" : [
-
-        ],
-        "frame" : "{{332, 6}, {51, 31}}",
-        "class" : "Switch",
-        "attributes" : {
-          "frame" : "{{135, 103}, {51, 31}}",
-          "value" : true,
-          "class" : "Switch",
-          "name" : "sendout",
-          "uuid" : "4C1857A4-EEF8-4E9B-8F20-D1D1C070EA93"
-        },
-        "selected" : false
-      },
-      {
-        "nodes" : [
-
-        ],
-        "frame" : "{{391, 6}, {208, 32}}",
-        "class" : "Label",
-        "attributes" : {
-          "name" : "label2",
-          "frame" : "{{85, 103}, {150, 32}}",
-          "uuid" : "B33D0004-D845-4D0B-953D-531228F29DDB",
-          "class" : "Label",
-          "alignment" : "left",
-          "text" : "send out",
-          "font_size" : 18,
-          "font_name" : "<System>"
-        },
-        "selected" : false
-      },
-      {
-        "nodes" : [
           {
             "nodes" : [
 
             ],
-            "frame" : "{{0, 0}, {288, 436}}",
+            "frame" : "{{0, 0}, {288, 396}}",
             "class" : "TextView",
             "attributes" : {
               "flex" : "WH",
@@ -92,7 +59,7 @@
             "selected" : true
           }
         ],
-        "frame" : "{{8, 83}, {288, 177}}",
+        "frame" : "{{8, 123}, {288, 137}}",
         "class" : "ScrollView",
         "attributes" : {
           "flex" : "HR",
@@ -111,7 +78,7 @@
             "nodes" : [
 
             ],
-            "frame" : "{{6, 0}, {314, 446}}",
+            "frame" : "{{6, 0}, {314, 409}}",
             "class" : "TextView",
             "attributes" : {
               "flex" : "WH",
@@ -129,7 +96,7 @@
             "selected" : true
           }
         ],
-        "frame" : "{{332, 86}, {320, 186}}",
+        "frame" : "{{332, 123}, {320, 149}}",
         "class" : "ScrollView",
         "attributes" : {
           "flex" : "HL",
@@ -164,7 +131,7 @@
         "nodes" : [
 
         ],
-        "frame" : "{{469, 6}, {80, 32}}",
+        "frame" : "{{339, 5}, {103, 32}}",
         "class" : "Button",
         "attributes" : {
           "action" : "self.btn_ping",
@@ -185,7 +152,7 @@
         "nodes" : [
 
         ],
-        "frame" : "{{547, 6}, {105, 31}}",
+        "frame" : "{{456, 6}, {196, 31}}",
         "class" : "Label",
         "attributes" : {
           "font_name" : "<System>",
@@ -240,6 +207,7 @@
         "frame" : "{{8, 44}, {51, 31}}",
         "class" : "Switch",
         "attributes" : {
+          "action" : "self.setUseStreams",
           "frame" : "{{375, 118}, {51, 31}}",
           "value" : true,
           "class" : "Switch",
@@ -264,6 +232,23 @@
           "font_size" : 18,
           "font_name" : "<System>"
         },
+        "selected" : false
+      },
+      {
+        "nodes" : [
+
+        ],
+        "frame" : "{{8, 90}, {80, 32}}",
+        "class" : "Button",
+        "attributes" : {
+          "action" : "self.willClose",
+          "frame" : "{{360, 117}, {80, 32}}",
+          "title" : "close",
+          "uuid" : "8CF59D9F-3A20-4089-A2F7-5BEA16AE49A7",
+          "class" : "Button",
+          "name" : "buttonClose",
+          "font_size" : 15
+        },
         "selected" : true
       }
     ],
@@ -272,10 +257,10 @@
     "attributes" : {
       "flex" : "",
       "enabled" : true,
-      "tint_color" : "RGBA(0.000000,0.478000,1.000000,1.000000)",
-      "border_color" : "RGBA(0.000000,0.000000,0.000000,1.000000)",
+      "background_color" : "RGBA(1.000000,1.000000,1.000000,1.000000)",
       "name" : "",
-      "background_color" : "RGBA(1.000000,1.000000,1.000000,1.000000)"
+      "tint_color" : "RGBA(0.000000,0.478000,1.000000,1.000000)",
+      "border_color" : "RGBA(0.000000,0.000000,0.000000,1.000000)"
     },
     "selected" : false
   }

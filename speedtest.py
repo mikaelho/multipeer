@@ -101,11 +101,12 @@ class Multiplayer:
 	def becomes_visible(self):
 		pass
 		
-	def willClose(self):
+	def willClose(self, sender):
 		if self.mc != None:
 			self.mc.end_all()
 			self.mc = None
-			print('multi ends all')
+		
+		self.view.close()
 
 	@ui.in_background
 	def btn_ping(self,sender):
@@ -126,6 +127,10 @@ class Multiplayer:
 	def setReliable(self,sender):
 		self.reliablemode = sender.value
 	
+	@ui.in_background
+	def setUseStreams(self,sender):
+		self.view['switchReliable'].enabled=sender.value
+		
 	@ui.in_background
 	def enableout(self,sender):
 		if sender.value:
