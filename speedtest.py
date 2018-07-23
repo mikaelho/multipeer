@@ -50,7 +50,7 @@ class c64Peer(multipeer.MultipeerConnectivity):
 			print(echoTime.text)
 			if self.pingcount == 0:				
 				self.parent.pingstart=None
-				echoTime.text= str(self.durchschnitt/1000) + 'ms durchschnitt'
+				echoTime.text= str(self.durchschnitt/1000) + 'ms average'
 				self.durchschnitt=0
 			else:
 				self.parent.pingstart=timer()
@@ -75,7 +75,7 @@ class c64Peer(multipeer.MultipeerConnectivity):
 			print(echoTime.text+' stream')
 			if self.pingcount == 0:				
 				self.parent.pingstart=None
-				echoTime.text= str(self.durchschnitt/1000) + 'ms durchschnitt'
+				echoTime.text= str(self.durchschnitt/1000) + 'ms average'
 				self.durchschnitt=0
 			else:
 				self.parent.pingstart=timer()
