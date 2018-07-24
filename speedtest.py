@@ -8,7 +8,7 @@ from timeit import default_timer as timer
 
 UIDevice = ObjCClass('UIDevice')
 
-class c64Peer(multipeer.MultipeerConnectivity):
+class thePeer(multipeer.MultipeerConnectivity):
 	pingcount=0
 	durchschnitt=0
 	def __init__(self, parent):
@@ -135,7 +135,7 @@ class Multiplayer:
 	def enableout(self,sender):
 		if sender.value:
 			if self.mc == None:
-				self.mc = c64Peer(parent=self)
+				self.mc = thePeer(parent=self)
 		else:
 				self.writeout('>peer closed...')
 				if self.mc != None:
