@@ -127,7 +127,7 @@ def session_peer_didChangeState_(_self,_cmd,_session,_peerID,_state):
   peerID.display_name = str(peerID.displayName())
   if _state == 2:
     self._peer_collector(peerID)
-  if _state is None:
+  if (_state is None or _state == 0):
     self.peer_removed(peerID)
 
 def session_didReceiveData_fromPeer_(_self,_cmd,_session,_data,_peerID):
