@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 """
-Multipeer Connectivity for Pythonista
+Multipeer connectivity for the Pythonista iOS app
 
 # Multipeer
 
@@ -14,6 +14,16 @@ Multipeer connectivity allows you to find and exchange information between
 bluetooth), without going through some server.
 
 Sample use cases include games, chats, file exchange (like AirDrop) and so on.
+
+## Installation
+
+Copy the `multipeer.py` file from Github to your site-packages, or just:
+  
+    pip install multipeer
+    
+in [Stash](https://github.com/ywangd/stash).
+
+## Usage
 
 Here's a minimal usage example, a line-based chat. You need to be running
 the same code on all devices participating in the chat.
