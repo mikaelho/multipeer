@@ -1,0 +1,11 @@
+[build-system]
+requires = ["flit_core >=2,<3"]
+build-backend = "flit_core.buildapi"
+
+[tool.flit.metadata]
+module = "multipeer"
+author = "Mikael Honkala"
+author-email = "mikael.honkala@gmail.com"
+home-page = "https://github.com/mikaelho/multipeer"
+classifiers = ["License :: OSI Approved :: MIT License"]
+
