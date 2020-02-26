@@ -323,199 +323,199 @@ class MultipeerConnectivity():
     """
 
 
-def __init__(self, display_name='Peer', service_type='dev-srv',
-        initial_data=None, initialize_streams=False):
-    global mc_managers
-
-    if display_name is None or display_name == '' or len(
-            display_name.encode()) > 63:
-        raise ValueError(
-            'display_name must not be None or empty string, and must be at '
-            'most 63 bytes long (UTF-8 encoded)', display_name)
-
-    self.service_type = service_type
-    check_re = re.compile(r'[^a-z0-9\-.]')
-    check_str = check_re.search(self.service_type)
-    if len(self.service_type) < 1 or len(self.service_type) > 15 or bool(
-            check_str):
-        raise ValueError(
-            'service_type must be 1-15 characters long and can contain only '
-            'ASCII lowercase letters, numbers and hyphens', service_type)
-
-    self.my_id = MCPeerID.alloc().initWithDisplayName(display_name)
-    self.my_id.display_name = str(self.my_id.displayName())
-
-    self.initial_data = initial_data
-    self.initial_peer_data = {}
-    self._peer_connection_hit_count = {}
-
-    mc_managers[self.my_id.hash()] = self
-
-    self.initialize_streams = initialize_streams
-    self.outputstream_per_peer = {}
-    self.peer_per_inputstream = {}
-
-    self.session = MCSession.alloc().initWithPeer_(self.my_id)
-    self.session.setDelegate_(SDelegate)
-
-    # Create browser and set delegate
-    self.browser = MCNearbyServiceBrowser.alloc().initWithPeer_serviceType_(
-        self.my_id, self.service_type)
-    self.browser.setDelegate_(Bdelegate)
-
-    # Create advertiser and set delegate
-    self.advertiser = MCNearbyServiceAdvertiser.alloc().\
-        initWithPeer_discoveryInfo_serviceType_(
-            self.my_id, ns({}), self.service_type)
-    self.advertiser.setDelegate_(ADelegate)
-
-    self.start_looking_for_peers()
-
-
-def peer_added(self, peer_id):
-    """ Override handling of new peers in a subclass. """
-    print('Added peer', peer_id.display_name)
-    print('Initial data:', self.get_initial_data(peer_id))
-
-
-def peer_removed(self, peer_id):
-    """ Override handling of lost peers in a subclass. """
-    print('Removed peer', peer_id.display_name)
-
-
-def get_peers(self):
-    ''' Get a list of peers currently connected. '''
-    peer_list = []
-    for peer in self.session.connectedPeers():
-        peer.display_name = str(peer.displayName())
-        peer_list.append(peer)
-    return peer_list
-
-
-def get_initial_data(self, peer_id):
-    """ Returns initial context data provided by the peer, or None. """
-    return self.initial_peer_data.get(peer_id.hash(), None)
-
-
-def start_looking_for_peers(self):
-    """ Start conmecting to available peers. """
-    self.browser.startBrowsingForPeers()
-    self.advertiser.startAdvertisingPeer()
-
-
-def stop_looking_for_peers(self):
-    """ Stop advertising for new connections, e.g. when you have all the
-    players and start a game, and do not want new players joining in the
-    middle. """
-    self.advertiser.stopAdvertisingPeer()
-    self.browser.stopBrowsingForPeers()
-
-
-def send(self, message, to_peer=None, reliable=True):
-    """ Send a message to some or all peers.
-
-    * `message` - to be sent to the peer(s). Must be JSON-serializable.
-    * `to_peer` - receiver peer IDs. Can be a single peer ID, a list of peer
-    IDs, or left out (None) for sending to all connected peers.
-    * `reliable` - indicates whether delivery of data should be guaranteed
-    (enqueueing and retransmitting data as needed, and ensuring in-order
-    delivery). Default is True, but can be set to False for performance
-    reasons.
-    """
-    if type(to_peer) == list:
-        peers = to_peer
-    elif to_peer is None:
-        peers = self.get_peers()
-    else:
-        peers = [to_peer]
-
-    message = json.dumps(message)
-    message = message.encode()
-
-    send_mode = 0 if reliable else 1
-    self.session.sendData_toPeers_withMode_error_(message, peers, send_mode,
-        None)
-
-
-def stream(self, byte_data, to_peer=None):
-    """ Stream message string to some or all peers. Stream per receiver will
-    be set up on first call. See constructor parameters for the option to have
-    streams per peer initialized on connection.
-
-    * `byte_data` - data to be sent to the peer(s). If you are sending a
-    string, call its `encode()` method and pass the result to this method.
-    * `to_peer` - receiver peer IDs. Can be a single peer ID, a list of peer
-    IDs, or left out (None) for sending to all connected peers.
-    """
-    if type(to_peer) == list:
-        peers = to_peer
-    elif to_peer is None:
-        peers = self.get_peers()
-    else:
-        peers = [to_peer]
-    for peer_id in peers:
-        peer_id = ObjCInstance(peer_id)
-        stream = self.outputstream_per_peer.get(peer_id.hash(), None)
-        if stream is None:
-            stream = self._set_up_stream(peer_id)
-        data_len = len(byte_data)
-        wrote_len = stream.write_maxLength_(byte_data, data_len)
-        if wrote_len != data_len:
-            print(f'Error writing data, wrote {wrote_len}/{data_len} bytes')
-
-
-def _set_up_stream(self, to_peer):
-    output_stream = ObjCInstance(
-        self.session.startStreamWithName_toPeer_error_('stream', to_peer,
-            None))
-    output_stream.setDelegate_(SDelegate)
-    output_stream.scheduleInRunLoop_forMode_(NSRunLoop.mainRunLoop(),
-        NSDefaultRunLoopMode)
-
-    output_stream.open()
-    self.outputstream_per_peer[to_peer.hash()] = output_stream
-    return output_stream
-
-
-def receive(self, message, from_peer):
-    """ Override in a subclass to handle incoming messages. """
-    print('Message from', from_peer.display_name, '-', message)
-
-
-def stream_receive(self, byte_data, from_peer):
-    """ Override in a subclass to handle incoming streamed data.
-    `byte_data` is a `bytearray`; call its `decode()` method if you expect a
-    string."""
-    print('Message from', from_peer.display_name, '-', byte_data.decode())
-
-
-def disconnect(self):
-    """ End your games or similar sessions by calling this method. """
-    self.session.disconnect()
-
-
-def end_all(self):
-    """ Disconnects from the multipeer session and removes internal references.
-    Further communications will require instantiating a new
-    MultipeerCommunications (sub)class. """
-    self.stop_looking_for_peers()
-    self.disconnect()
-
-    del mc_managers[self.my_id.hash()]
-
-
-def _peer_collector(self, peer_id):
-    """ Makes sure that `peer_added` is only called after the full "two-way
-    handshake" is complete and the initial context info has been captured.
-    Also sets up a stream to peer if requested by the constructor argument. """
-    peer_hash = peer_id.hash()
-    self._peer_connection_hit_count.setdefault(peer_hash, 0)
-    self._peer_connection_hit_count[peer_hash] += 1
-    if self._peer_connection_hit_count[peer_hash] > 1:
-        if (self.initialize_streams and peer_hash not in
-                self.outputstream_per_peer):
-            self._set_up_stream(peer_id)
-        self.peer_added(peer_id)
+    def __init__(self, display_name='Peer', service_type='dev-srv',
+            initial_data=None, initialize_streams=False):
+        global mc_managers
+    
+        if display_name is None or display_name == '' or len(
+                display_name.encode()) > 63:
+            raise ValueError(
+                'display_name must not be None or empty string, and must be at '
+                'most 63 bytes long (UTF-8 encoded)', display_name)
+    
+        self.service_type = service_type
+        check_re = re.compile(r'[^a-z0-9\-.]')
+        check_str = check_re.search(self.service_type)
+        if len(self.service_type) < 1 or len(self.service_type) > 15 or bool(
+                check_str):
+            raise ValueError(
+                'service_type must be 1-15 characters long and can contain only '
+                'ASCII lowercase letters, numbers and hyphens', service_type)
+    
+        self.my_id = MCPeerID.alloc().initWithDisplayName(display_name)
+        self.my_id.display_name = str(self.my_id.displayName())
+    
+        self.initial_data = initial_data
+        self.initial_peer_data = {}
+        self._peer_connection_hit_count = {}
+    
+        mc_managers[self.my_id.hash()] = self
+    
+        self.initialize_streams = initialize_streams
+        self.outputstream_per_peer = {}
+        self.peer_per_inputstream = {}
+    
+        self.session = MCSession.alloc().initWithPeer_(self.my_id)
+        self.session.setDelegate_(SDelegate)
+    
+        # Create browser and set delegate
+        self.browser = MCNearbyServiceBrowser.alloc().initWithPeer_serviceType_(
+            self.my_id, self.service_type)
+        self.browser.setDelegate_(Bdelegate)
+    
+        # Create advertiser and set delegate
+        self.advertiser = MCNearbyServiceAdvertiser.alloc().\
+            initWithPeer_discoveryInfo_serviceType_(
+                self.my_id, ns({}), self.service_type)
+        self.advertiser.setDelegate_(ADelegate)
+    
+        self.start_looking_for_peers()
+    
+    
+    def peer_added(self, peer_id):
+        """ Override handling of new peers in a subclass. """
+        print('Added peer', peer_id.display_name)
+        print('Initial data:', self.get_initial_data(peer_id))
+    
+    
+    def peer_removed(self, peer_id):
+        """ Override handling of lost peers in a subclass. """
+        print('Removed peer', peer_id.display_name)
+    
+    
+    def get_peers(self):
+        ''' Get a list of peers currently connected. '''
+        peer_list = []
+        for peer in self.session.connectedPeers():
+            peer.display_name = str(peer.displayName())
+            peer_list.append(peer)
+        return peer_list
+    
+    
+    def get_initial_data(self, peer_id):
+        """ Returns initial context data provided by the peer, or None. """
+        return self.initial_peer_data.get(peer_id.hash(), None)
+    
+    
+    def start_looking_for_peers(self):
+        """ Start conmecting to available peers. """
+        self.browser.startBrowsingForPeers()
+        self.advertiser.startAdvertisingPeer()
+    
+    
+    def stop_looking_for_peers(self):
+        """ Stop advertising for new connections, e.g. when you have all the
+        players and start a game, and do not want new players joining in the
+        middle. """
+        self.advertiser.stopAdvertisingPeer()
+        self.browser.stopBrowsingForPeers()
+    
+    
+    def send(self, message, to_peer=None, reliable=True):
+        """ Send a message to some or all peers.
+    
+        * `message` - to be sent to the peer(s). Must be JSON-serializable.
+        * `to_peer` - receiver peer IDs. Can be a single peer ID, a list of peer
+        IDs, or left out (None) for sending to all connected peers.
+        * `reliable` - indicates whether delivery of data should be guaranteed
+        (enqueueing and retransmitting data as needed, and ensuring in-order
+        delivery). Default is True, but can be set to False for performance
+        reasons.
+        """
+        if type(to_peer) == list:
+            peers = to_peer
+        elif to_peer is None:
+            peers = self.get_peers()
+        else:
+            peers = [to_peer]
+    
+        message = json.dumps(message)
+        message = message.encode()
+    
+        send_mode = 0 if reliable else 1
+        self.session.sendData_toPeers_withMode_error_(message, peers, send_mode,
+            None)
+    
+    
+    def stream(self, byte_data, to_peer=None):
+        """ Stream message string to some or all peers. Stream per receiver will
+        be set up on first call. See constructor parameters for the option to have
+        streams per peer initialized on connection.
+    
+        * `byte_data` - data to be sent to the peer(s). If you are sending a
+        string, call its `encode()` method and pass the result to this method.
+        * `to_peer` - receiver peer IDs. Can be a single peer ID, a list of peer
+        IDs, or left out (None) for sending to all connected peers.
+        """
+        if type(to_peer) == list:
+            peers = to_peer
+        elif to_peer is None:
+            peers = self.get_peers()
+        else:
+            peers = [to_peer]
+        for peer_id in peers:
+            peer_id = ObjCInstance(peer_id)
+            stream = self.outputstream_per_peer.get(peer_id.hash(), None)
+            if stream is None:
+                stream = self._set_up_stream(peer_id)
+            data_len = len(byte_data)
+            wrote_len = stream.write_maxLength_(byte_data, data_len)
+            if wrote_len != data_len:
+                print(f'Error writing data, wrote {wrote_len}/{data_len} bytes')
+    
+    
+    def _set_up_stream(self, to_peer):
+        output_stream = ObjCInstance(
+            self.session.startStreamWithName_toPeer_error_('stream', to_peer,
+                None))
+        output_stream.setDelegate_(SDelegate)
+        output_stream.scheduleInRunLoop_forMode_(NSRunLoop.mainRunLoop(),
+            NSDefaultRunLoopMode)
+    
+        output_stream.open()
+        self.outputstream_per_peer[to_peer.hash()] = output_stream
+        return output_stream
+    
+    
+    def receive(self, message, from_peer):
+        """ Override in a subclass to handle incoming messages. """
+        print('Message from', from_peer.display_name, '-', message)
+    
+    
+    def stream_receive(self, byte_data, from_peer):
+        """ Override in a subclass to handle incoming streamed data.
+        `byte_data` is a `bytearray`; call its `decode()` method if you expect a
+        string."""
+        print('Message from', from_peer.display_name, '-', byte_data.decode())
+    
+    
+    def disconnect(self):
+        """ End your games or similar sessions by calling this method. """
+        self.session.disconnect()
+    
+    
+    def end_all(self):
+        """ Disconnects from the multipeer session and removes internal references.
+        Further communications will require instantiating a new
+        MultipeerCommunications (sub)class. """
+        self.stop_looking_for_peers()
+        self.disconnect()
+    
+        del mc_managers[self.my_id.hash()]
+    
+    
+    def _peer_collector(self, peer_id):
+        """ Makes sure that `peer_added` is only called after the full "two-way
+        handshake" is complete and the initial context info has been captured.
+        Also sets up a stream to peer if requested by the constructor argument. """
+        peer_hash = peer_id.hash()
+        self._peer_connection_hit_count.setdefault(peer_hash, 0)
+        self._peer_connection_hit_count[peer_hash] += 1
+        if self._peer_connection_hit_count[peer_hash] > 1:
+            if (self.initialize_streams and peer_hash not in
+                    self.outputstream_per_peer):
+                self._set_up_stream(peer_id)
+            self.peer_added(peer_id)
 
 
 if __name__ == '__main__':
