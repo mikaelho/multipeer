@@ -7,5 +7,9 @@ module = "multipeer"
 author = "Mikael Honkala"
 author-email = "mikael.honkala@gmail.com"
 home-page = "https://github.com/mikaelho/multipeer"
-classifiers = ["License :: OSI Approved :: MIT License"]
-
+dist-name = "pythonista-multipeer"
+description-file = "README.md"
+license = "TheUnlicense"
+classifiers = [
+    "Operating System :: iOS"
+]
