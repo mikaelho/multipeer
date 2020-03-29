@@ -17,7 +17,7 @@ Sample use cases include games, chats, file exchange (like AirDrop) and so on.
 
 Copy the `multipeer.py` file from Github to your site-packages, or just:
   
-    pip install multipeer
+    pip install pythonista-multipeer
     
 in [Stash](https://github.com/ywangd/stash).
 
